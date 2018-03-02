@@ -17,12 +17,13 @@ import java.util.concurrent.TimeUnit;
 
 
 public class ClientGUI extends JFrame implements ActionListener, WindowListener {
-	private String hostName = "127.0.0.1";
-	private int portNr = 6125;
-	private int bufferSize = 1024;
-	private final String clientPattern = "PMateuszMessageServerClient";
-	private final Charset charset = Charset.forName("UTF-8");
-	private ByteBuffer buffer;
+	private static final String hostName = "127.0.0.1";
+	private static final int portNr = 6125;
+	private static final int bufferSize = 1024;
+	private static final String clientPattern = "PMateuszMessageServerClient";
+	private static final Charset CHARSET = Charset.forName("UTF-8");
+	private static final int BLOCKING_SIZE = 128;
+
 	private JPanel rootPanel;
 	private JToolBar buttonsMenuBar;
 	private JButton closeTab;
@@ -36,19 +37,18 @@ public class ClientGUI extends JFrame implements ActionListener, WindowListener 
 
 	private static final Color textAreaColor = new Color(84, 88, 90);
 	private static final Color textColor = new Color(242,242,242);
-	private DefaultListModel listModel;
-	private HandleWorkload worker;
-	private ArrayBlockingQueue mainDataQueue;
-	private Map<String, ArrayBlockingQueue> readThreads = new HashMap<>();
-	private Map<String, ArrayBlockingQueue> writeThreads = new HashMap<>();
-	private Map<String, JTextArea> printAreas = new HashMap<>();
-	private Map<String, JTextArea> writeAreas = new HashMap<>();
+	private DefaultListModel defListModel;
+	private ArrayBlockingQueue<String> mainDataQueue;
+	private Map<String, ArrayBlockingQueue> readThreads;
+	private Map<String, ArrayBlockingQueue> writeThreads;
+	private Map<String, JTextArea> printAreas;
+	private Map<String, JTextArea> writeAreas;
 
 
-	public ClientGUI() {
+	ClientGUI() {
 		setTitle("Chat-o-Matt");
 
-		worker = new HandleWorkload();
+		HandleWorkload worker = new HandleWorkload();
 
 		initComponents();
 		addListeneres();
@@ -73,16 +73,22 @@ public class ClientGUI extends JFrame implements ActionListener, WindowListener 
 
 		usersList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
 		usersList.setLayoutOrientation(JList.VERTICAL);
-		listModel = new DefaultListModel();
-		usersList.setModel(listModel);
+		defListModel = new DefaultListModel();
+		usersList.setModel(defListModel);
 
-		usersCount.setText("Active users: " + listModel.size());
+		usersCount.setText("Active users: " + defListModel.size());
 
-		/**try {
+		readThreads = new HashMap<>();
+		writeThreads = new HashMap<>();
+		printAreas = new HashMap<>();
+		writeAreas = new HashMap<>();
+
+		//for windows OS
+		try {
 			UIManager.setLookAndFeel("com.sun.java.swing.plaf.windows.WindowsLookAndFeel");
 		} catch(Exception ex) {
 			ex.printStackTrace();
-		}*/
+		}
 		SwingUtilities.updateComponentTreeUI(this);
 
 	}
@@ -94,38 +100,27 @@ public class ClientGUI extends JFrame implements ActionListener, WindowListener 
 
 		addWindowListener(this);
 
-		ListSelectionModel listSelectionModel = usersList.getSelectionModel();
-		listSelectionModel.addListSelectionListener(new ListSelectionListener() {
-			@Override
-			public void valueChanged(ListSelectionEvent e) {
-
-				ListSelectionModel lsm = (ListSelectionModel) e.getSource();
-				if (!lsm.getValueIsAdjusting()) {
-					if (lsm.isSelectionEmpty()) {
-						lsm.clearSelection();
-						chooseUser.setText("");
-
-					} else {
-						int idx = lsm.getLeadSelectionIndex();
-						String user = (String)listModel.getElementAt(idx);
-						//System.out.println("user: " + user);
-						chooseUser.setText(user);
-					}
+		usersList.getSelectionModel().addListSelectionListener((ListSelectionEvent event) -> {
+			ListSelectionModel lsm = (ListSelectionModel) event.getSource();
+			if (!lsm.getValueIsAdjusting()) {
+				if (lsm.isSelectionEmpty()) {
+					lsm.clearSelection();
+					chooseUser.setText("");
+				} else {
+					String user = (String) defListModel.getElementAt(lsm.getLeadSelectionIndex());
+					chooseUser.setText(user);
 				}
-
 			}
 		});
 
 		appPages.addChangeListener(new TabChangeListener());
-
 	}
 
 
-	//-------------- METODY NASLUCHUJACE ZMIANY STANU OKNA APLIKACJI START --------------------//
-	//obsluga zamkniecia (krzyzyk lub Alt+F4)
+	//------------ METHODS LISTENING FOR APPLICATION WINDOW CHANGES - BEGIN ------------//
+	//handle closing ('X' button or Alt+F4)
 	public void windowClosing(WindowEvent we) {
 		int nOption;
-		//System.out.println("Zamykanie");
 		int tabCount = appPages.getTabCount();
 		if (tabCount > 1) {
 
@@ -149,24 +144,24 @@ public class ClientGUI extends JFrame implements ActionListener, WindowListener 
 
 	public void windowOpened(WindowEvent we) {}
 
-	public void windowActivated(WindowEvent e) {}
+	public void windowActivated(WindowEvent we) {}
 
-	public void windowDeactivated(WindowEvent e) {}
-	//-------------- METODY NASLUCHUJACE ZMIANY STANU OKNA APLIKACJI KONIEC --------------------//
+	public void windowDeactivated(WindowEvent we) {}
+	//------------ METHODS LISTENING FOR APPLICATION WINDOW CHANGES - END ------------//
 
-	//obsluga klikalnych przyciskow
+
+	//handle clickable buttons
 	public void actionPerformed(ActionEvent e) {
 
 		if (e.getSource() == sendRequest) {
-			//obsluga przycisku zaproszenia do rozmowy
+			//send conversation request button
 			String user = chooseUser.getText();
 			if (user.length() > 0) {
-				//System.out.println("Wysyłam dane do workera" + user);
 				mainDataQueue.add("a;" + user + ";");
 			}
 
 		} else if (e.getSource() == closeTab) {
-			//obsluga przycisku zamykania aktywnej karty rozmowy
+			//close conversation button
 			int idx = appPages.getSelectedIndex();
 			if (idx > 0) {
 				String tabName = appPages.getTitleAt(idx);
@@ -177,30 +172,37 @@ public class ClientGUI extends JFrame implements ActionListener, WindowListener 
 		}
 	}
 
-	//worker thread - obsluguje dane od aplikacji
+	//worker thread - manages application data
 	private class HandleWorkload implements Runnable {
 
 		@Override
 		public void run() {
 
+			ByteBuffer buffer;
 			try (SocketChannel channel = SocketChannel.open()) {
 				channel.configureBlocking(true);
 				channel.connect(new InetSocketAddress(hostName, portNr));
 
+				int timeOut = 0;
 				while (!channel.finishConnect()) {
+					if (timeOut++ > 100)
+						return;
+					try {
+						TimeUnit.MILLISECONDS.sleep(100);
+					} catch (InterruptedException itrEx) {
+						itrEx.printStackTrace();
+					}
 				}
 
 				buffer = ByteBuffer.allocate(bufferSize);
-				int response = -1;
-
-				System.out.println("Wysyłam certyfikat.");
+				System.out.println("Sending certificate.");
 				buffer.clear();
-				buffer.put(clientPattern.getBytes(charset));
+				buffer.put(clientPattern.getBytes(CHARSET));
 				buffer.flip();
 				channel.write(buffer);
 				String userName = "";
-				int countBadLogins = 0;
 
+				int response = -1;
 				while (response == -1) {
 
 					while (true) {
@@ -214,11 +216,10 @@ public class ClientGUI extends JFrame implements ActionListener, WindowListener 
 						} else if (userName.length() > 2) {
 							break;
 						}
-						countBadLogins++;
 					}
 
 					buffer.clear();
-					buffer.put((userName + ";").getBytes(charset));
+					buffer.put((userName + ";").getBytes(CHARSET));
 					buffer.flip();
 					channel.write(buffer);
 
@@ -227,61 +228,47 @@ public class ClientGUI extends JFrame implements ActionListener, WindowListener 
 					buffer.flip();
 					response = buffer.getInt();
 
-					if (response == -1) {
+					if (response == -1)
 						JOptionPane.showMessageDialog(rootPanel, "This login is already in use,\n",
-								  "Login error", JOptionPane.INFORMATION_MESSAGE);
-					}
-
-					if (response != -1) {
-						break;
-					} else if (countBadLogins++ > 15) {
-						setVisible(false);
-						dispose();
-						return;
-					}
+							  "Login error", JOptionPane.INFORMATION_MESSAGE);
 				}
 
 
-				//odkryj okno aplikacji jezeli weryfikacja przebiegla pomyslnie
-				mainDataQueue = new ArrayBlockingQueue(128);
+				//reveal window app if verification was succesful
+				mainDataQueue = new ArrayBlockingQueue<>(BLOCKING_SIZE);
 				ownerName.setText(userName);
 				setVisible(true);
 
 				// wyswietlanie listy uzytkownikow
-				boolean isWorking = true;
+				//
 				boolean clientsUpdate = true;
 				boolean awaitingConv = false;
-				boolean sendOK = false;
+				boolean sendOK;
 				int bytesRead;
-				String[] users;
-				String[] convUser;
 				String[] inputArray;
-				List<String> convUsers = new LinkedList<>();
 				String input;
 				String usersData;
 				Calendar calendar;
 				SimpleDateFormat dateFormat = new SimpleDateFormat("HH:mm");
-				ArrayList<String> removingConvs = new ArrayList<>();
-
+				List<String> convUsers = new LinkedList<>();
+				List<String> removingConvs = new ArrayList<>();
 				List<String> clientsNames = new LinkedList<>();
 				channel.configureBlocking(false);
 
 				buffer.compact();
-				while (isWorking) {
+				while (true) {
 
 					if (clientsUpdate) {
-
+						//print active users
 						if (response == 1) {
-							if (listModel.size() != 0) {
-								listModel.removeAllElements();
-								usersCount.setText("Active users: " + listModel.size());
+							//no other users
+							if (defListModel.size() != 0) {
+								defListModel.removeAllElements();
+								usersCount.setText("Active users: " + defListModel.size());
 							}
-							//System.out.println("Nie ma innych uztykownikow");
 						} else {
-							//buffer.compact();
-							//System.out.println("Liczba uzytkownikow: " + (response - 1));
-							usersData = new String(buffer.array(), charset);
-							users = usersData.split(";");
+							usersData = new String(buffer.array(), CHARSET);
+							String[] users = usersData.split(";");
 
 							clientsNames.clear();
 							for (int i = 0; i < response; i++) {
@@ -290,16 +277,13 @@ public class ClientGUI extends JFrame implements ActionListener, WindowListener 
 								clientsNames.add(users[i]);
 							}
 							Collections.sort(clientsNames);
-							synchronized (usersList) {
-								if (listModel.size() != 0) {
-									listModel.removeAllElements();
-								}
-								for (String str : clientsNames) {
-									//System.out.println(str);
-									listModel.addElement(str);
-								}
+							if (defListModel.size() != 0) {
+								defListModel.removeAllElements();
 							}
-							usersCount.setText("Active users: " + listModel.size());
+							for (String str : clientsNames) {
+								defListModel.addElement(str);
+							}
+							usersCount.setText("Active users: " + defListModel.size());
 						}
 						clientsUpdate = false;
 					}
@@ -307,7 +291,7 @@ public class ClientGUI extends JFrame implements ActionListener, WindowListener 
 					buffer.clear();
 					bytesRead = channel.read(buffer);
 					if (bytesRead == -1) {
-						System.out.println("STOP. Serwer zakończył połączenie");
+						System.out.println("STOP. Server closed the connection");
 						break;
 					}
 
@@ -317,37 +301,35 @@ public class ClientGUI extends JFrame implements ActionListener, WindowListener 
 						buffer.compact();
 
 						if (response > 0) {
-							//clientCount = response;
+							//response greater than 0 means update active clients list
 							clientsUpdate = true;
 							continue;
 						} else if (response == -10) {
-							//System.out.println("Inny klient chce rozmawiać");
-
-
-							usersData = new String(buffer.array(), charset);
-							convUser = usersData.split(";");
+							//another user wants to talk
+							//convUser[0] holds his login
+							usersData = new String(buffer.array(), CHARSET);
+							String[] convUser = usersData.split(";");
 
 							new Thread(new DialogsHandler(DialogsHandler.CONV_REQUEST, convUser[0])).start();
 
-							//System.out.println("Identyfikator rozmówcy: " + convUser[0]);
 							awaitingConv = true;
 							convUsers.add(convUser[0]);
 
 						} else if (response == -20) {
 							//System.out.println("Taka rozmowa już się rozpoczęła");
-							usersData = new String(buffer.array(), charset);
+							usersData = new String(buffer.array(), CHARSET);
 							new Thread(new DialogsHandler(DialogsHandler.CONV_STARTED, usersData.split(";")[0])).start();
 
 						} else if (response == -30) {
 
-							usersData = new String(buffer.array(), charset);
+							usersData = new String(buffer.array(), CHARSET);
 
 							//System.out.println("Wybrany użytkownik " + usersData.split(";")[0] + " odmówił rozmowy");
 							new Thread(new DialogsHandler(DialogsHandler.CONV_REFUSED, usersData.split(";")[0])).start();
 						} else if (response == -40) {
 
 							//odebranie odpowiedzi o zaakceptowaniu rozmowy
-							usersData = new String(buffer.array(), charset);
+							usersData = new String(buffer.array(), CHARSET);
 							String[] connectData = usersData.split(";");
 
 
@@ -357,7 +339,7 @@ public class ClientGUI extends JFrame implements ActionListener, WindowListener 
 							//System.out.println("Laczenie z handlerem na adresie "
 							// + connectData[1] + " i porcie " + connectData[0]);
 							buffer.clear();
-							buffer.put(("c;" + userName + ";" + connectData[0] + ";").getBytes(charset));
+							buffer.put(("c;" + userName + ";" + connectData[0] + ";").getBytes(CHARSET));
 							buffer.flip();
 							channel.write(buffer);
 
@@ -368,12 +350,10 @@ public class ClientGUI extends JFrame implements ActionListener, WindowListener 
 
 					}
 
-					//if (stdIn.ready()) {
 					if (!mainDataQueue.isEmpty()) {
-						//if ((input = stdIn.readLine()) != null) {
 
 						try {
-							input = (String)mainDataQueue.take();
+							input = mainDataQueue.take();
 							sendOK = true;
 						} catch (InterruptedException bqEx) {
 							System.out.println(bqEx.getMessage());
@@ -389,20 +369,20 @@ public class ClientGUI extends JFrame implements ActionListener, WindowListener 
 								break;
 							} else if (inputArray[0].equals("y") && awaitingConv) {
 								//wysylanie informacji zwrotnej o przyjeciu rozmowy
-								buffer.put(("y;" + inputArray[1] + ";" + userName + ";").getBytes(charset));
+								buffer.put(("y;" + inputArray[1] + ";" + userName + ";").getBytes(CHARSET));
 								convUsers.remove(inputArray[1]);
 								if (convUsers.isEmpty())
 									awaitingConv = false;
 							} else if (inputArray[0].equals("n") && awaitingConv) {
 								//wysylanie informacji zwrotnej o odrzuceniu rozmowy
-								buffer.put(("n;" + inputArray[1] + ";" + userName + ";").getBytes(charset));
+								buffer.put(("n;" + inputArray[1] + ";" + userName + ";").getBytes(CHARSET));
 								convUsers.remove(inputArray[1]);
 								if (convUsers.isEmpty())
 									awaitingConv = false;
 							} else if (inputArray[0].equals("a") && clientsNames.contains(inputArray[1])) {
 								//wysylanie zapytania o nowa rozmowe
 								//System.out.println("Wysyłam zapytanie, input: " + inputArray[1]);
-								buffer.put(("a;" + inputArray[1] + ";").getBytes(charset));
+								buffer.put(("a;" + inputArray[1] + ";").getBytes(CHARSET));
 							} else if (inputArray[0].equals("s")) {
 								//kopiowanie tekstu clienta w danej rozmowie do okna wynikowego
 								//System.out.println("Kopiuje tekst rozmowy " + inputArray[1]);
@@ -481,16 +461,16 @@ public class ClientGUI extends JFrame implements ActionListener, WindowListener 
 					}
 				}
 				//wyslanie informacji do wszystkich istniejacych rozmow o zamknieciu polaczen
-				//
+				//^ ^ ^ ^ to chyba juz nie potrzebne
 
 			} catch (IOException ioEx) {
-				System.out.println("Connection problem.");
-				System.out.println(ioEx.getMessage());
+				System.err.println("Connection problem.");
+				System.err.println(ioEx.getMessage());
 			}
 			performSafeClose();
 		}
 
-		//usuwanie kolejek blokujacych zmapowanych do rozmow po ich zakonczeniu
+		//removing blocking queues mapped to conversation after closing it
 		private void removeMapings(String convUser) {
 			writeThreads.remove(convUser);
 			readThreads.remove(convUser);
@@ -517,7 +497,7 @@ public class ClientGUI extends JFrame implements ActionListener, WindowListener 
 		private String convUser;
 		private int dialogType;
 
-		public DialogsHandler(int dialog, String convUser) {
+		DialogsHandler(int dialog, String convUser) {
 			dialogType = dialog;
 			this.convUser = convUser;
 		}
@@ -530,7 +510,7 @@ public class ClientGUI extends JFrame implements ActionListener, WindowListener 
 			} else if (dialogType == 2) {
 				int answr = JOptionPane.showConfirmDialog(rootPanel, "User '" + convUser + "' wants to talk,\n"
 						  + "Do You agree?", "New Conversation", JOptionPane.YES_NO_OPTION, JOptionPane.INFORMATION_MESSAGE);
-				if (answr == JOptionPane.NO_OPTION) {
+				if (answr == JOptionPane.NO_OPTION || answr == JOptionPane.CLOSED_OPTION) {
 					System.out.println("Odrzucono rozmowę");
 					mainDataQueue.add(new String("n;" + convUser + ";"));
 				} else {
@@ -643,7 +623,7 @@ public class ClientGUI extends JFrame implements ActionListener, WindowListener 
 
 	}
 
-	//tworzenie readera i writera dla nowej rozmowy
+	//creating reader and writer for new conv
 	private boolean doConnect(String host, int port, String convUser) {
 
 		try {
@@ -665,7 +645,7 @@ public class ClientGUI extends JFrame implements ActionListener, WindowListener 
 			new Thread(writer).start();
 
 		} catch (IOException ioEx) {
-			System.err.println("Nie udało się rozpocząć nowej rozmowy");
+			System.err.println("Failed to create new conversation");
 			System.err.println(ioEx.getMessage());
 			return false;
 		}
@@ -673,7 +653,7 @@ public class ClientGUI extends JFrame implements ActionListener, WindowListener 
 
 	}
 
-	//ustawianie okna na srodku ekranu
+	//centering app on the screen
 	private void centerFrame() {
 		Dimension windowSize = getPreferredSize();
 		GraphicsEnvironment ge = GraphicsEnvironment.getLocalGraphicsEnvironment();

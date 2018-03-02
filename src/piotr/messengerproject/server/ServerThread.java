@@ -33,25 +33,35 @@ public class ServerThread implements Runnable {
 	private boolean isRunning = false;
 	private ByteBuffer readBuffer;
 	//lista instancji ChangeRequest
-	private List<ChangeRequest> changeRequests = new LinkedList<>();
+	private List<ChangeRequest> changeRequests;
 	//mapowanie socketChannel clienta do listy instancji ByteBufforow
-	private Map<SocketChannel, List<ByteBuffer>> pendingData = new HashMap<>();
-	private Map<SocketChannel, ClientState> clientsState = new HashMap<>();
+	private Map<SocketChannel, List<ByteBuffer>> pendingData;
+	private Map<SocketChannel, ClientState> clientsState;
 	private ExecutorService handlersExecutor;
-	private ArrayList<String> clientsIDs = new ArrayList<>();
-	private ArrayList<SocketChannel> clientsChs = new ArrayList<>();
-	private List<ConversationPair> pendingPairs = new LinkedList<>();
-	private List<ConversationPair> activePairs = new LinkedList<>();
-	private List<HandleConversation> handlerWorkers = new LinkedList<>();
-	private List<Integer> handlersPorts = new LinkedList<>();
-	private ArrayBlockingQueue handlersEndData = new ArrayBlockingQueue(CONV_MAX*2);
+	private ArrayList<String> clientsIDs;
+	private ArrayList<SocketChannel> clientsChnnls;
+	private List<ConversationPair> pendingPairs;
+	private List<ConversationPair> activePairs;
+	private List<HandleConversation> handlerWorkers;
+	private List<Integer> handlersPorts;
+	private ArrayBlockingQueue handlersEndData;
 
 
-	ServerThread(String name, int listenPort) {
+	ServerThread(String hostName, int listenPort) {
 		System.setProperty("sun.net.useExclusiveBind", "false");
-		hostName = name;
+		this.hostName = hostName;
 		this.listenPort = listenPort;
 		readBuffer = ByteBuffer.allocate(BUFF_SIZE);
+		changeRequests = new LinkedList<>();//or maybe ArrayList<> should be used
+		pendingData = new HashMap<>();
+		clientsState = new HashMap<>();
+		clientsIDs = new ArrayList<>();
+		clientsChnnls = new ArrayList<>();
+		pendingPairs = new ArrayList<>(); 	//or maybe LinkedList<> should be used
+		activePairs = new ArrayList<>();		//or maybe LinkedList<> should be used
+		handlerWorkers = new ArrayList<>();	//or maybe LinkedList<> should be used
+		handlersPorts = new ArrayList<>();	//or maybe LinkedList<> should be used
+		handlersEndData = new ArrayBlockingQueue(CONV_MAX*2);
 		openSocket();
 		handlersExecutor = Executors.newFixedThreadPool(CONV_MAX);
 	}
@@ -124,34 +134,31 @@ public class ServerThread implements Runnable {
 	private void accept(SelectionKey key) throws IOException {
 
 		ServerSocketChannel serverSocketChannel = (ServerSocketChannel)key.channel();
-		//System.out.println("accept dla serverSocketu: " + serverSocketChannel.getLocalAddress());
-		//akceptowanie polaczenia, ustawianie go w trybie non-blocking
+		//accept incoming connection, set it in non-blocking mode
 		SocketChannel newClient = serverSocketChannel.accept();
 		newClient.configureBlocking(false);
-		//rejestrowanie nowego clienta selectorem, z zaznaczeniem oczekiwania
-		//na poinformowanie o danych przychodzacych od clienta
+		//register new client with selector, prepared for reading incoming data
 		newClient.register(selector, SelectionKey.OP_READ);
-		//System.out.println("klient przyjety, oczekiwanie na dane");
+		//System.out.println("Client accepted, waiting for data");
 		clientsState.put(newClient, new ClientState());
-		//System.out.println("Liczba klientów: " + clientCount);
+		//System.out.println("Client count: " + clientCount);
 	}
 
 	private void read(SelectionKey key) throws IOException {
-		//System.out.println("+++++++ czytam w serverThread");
 		SocketChannel clientRead = (SocketChannel)key.channel();
 		ClientState state = clientsState.get(clientRead);
 
-		//czyszczenie bufora odczytu przed przyjeciem nowych danych
+		//clear read buffer before accepting incoming data
 		readBuffer.clear();
 		int bytesRead;
-		//proba odczytania danych z kanalu
+		//try to read from client's channel
 		try {
 			bytesRead = clientRead.read(readBuffer);
 		} catch (IOException ioEx) {
-			//blad spowodowany zerwaniem polaczenia przez clienta
-			//anulowanie wybranego klucza (selecion key) i zamkniecie kanalu
-			System.err.println("Błąd podczas odczytywania danych z kanału. Zamykam połącznie");
-			System.out.println(ioEx.getMessage());
+			//exception caused by client disconnecting 'unproperly'
+			//cancel 'SelectionKey key' and close corresponding channel
+			System.err.println("SERVER: Exception raised while reading data. Closing client connection");
+			System.err.println(ioEx.getMessage());
 
 			if (state.getState() > ClientState.WAITFORUID) {
 				dropRegisteredClient(clientRead);
@@ -170,7 +177,6 @@ public class ServerThread implements Runnable {
 			clientsState.remove(clientRead);
 			key.cancel();
 			clientRead.close();
-			//System.out.println("End of data, connection terminated by client\n");
 			return;
 		}
 
@@ -195,23 +201,13 @@ public class ServerThread implements Runnable {
 				String clientData = new String(readBuffer.array(), charset);
 				String clientId = clientData.split(";")[0];
 
-				//clientId = new String(dataCopy, charset);
-				if (clientId.length() < 3) {
-					//provided login too short
-					readBuffer.clear();
-					readBuffer.putInt(-1);
-					readBuffer.flip();
-					send(clientRead, readBuffer.array());
-					return;
-				}
 				//veryfication successful, returning list of connected clients
 				//or -1 if provided login is already in use
-
 				readBuffer.clear();
 				if (clientsIDs.isEmpty()) {
 					readBuffer.putInt(1);
 					clientsIDs.add(clientId);
-					clientsChs.add(clientRead);
+					clientsChnnls.add(clientRead);
 				} else {
 
 					readBuffer.putInt(clientsIDs.size() + 1);
@@ -228,36 +224,34 @@ public class ServerThread implements Runnable {
 					readBuffer.put((clientId.concat(";")).getBytes(charset));
 
 					clientsIDs.add(clientId);
-					clientsChs.add(clientRead);
+					clientsChnnls.add(clientRead);
 				}
 
-				//System.out.println("Login ok, serwer wita");
-				//System.out.println("Liczba użytkowników: " + clientsIDs.size());
-				//zmiana stanu klienta z oczekiwania na weryfikacje
-				//na wybor uzytkownika do rozmowy
+				//change client state from waiting for veryfication
+				//into enabling conversations
 				state.setState(ClientState.SERVECLIENT);
-				//wyslanie danych zwrotnych do klienta na temat ilosci
-				//podlaczonych uzytkownikow oraz ich identyfikatorow
+				//update all connected clients with information
+				//about quantity and logins of active users
 				readBuffer.flip();
-				for (SocketChannel clnt : clientsChs) {
+				for (SocketChannel clnt : clientsChnnls) {
 					send(clnt, readBuffer.array());
 				}
 
 			} else if (state.getState() == ClientState.SERVECLIENT) {
-				//System.out.println("Klient przyjety, chce rozpoczac konwersacje");
+				//Veryfied client tries to create new conversation
 				ConversationPair pair;
 				String[] userData = (new String(readBuffer.array(), charset)).split(";");
-				//System.out.println("Proba nawiazania rozmowy z: " + userData[1]);
 
+				//userData[0] holds info about type of message (ask for, refuse, confirm conversation)
+				//userData[1] holds info about user that this client wants to talk
 				switch (userData[0]) {
 					case C_ASK:
+						//
 						if (clientsIDs.contains(userData[1])) {
-							//System.out.println("$ $ $ taki klient jest on-line");
-							//state.setState(ClientState.ASKFORCONV);
 							//state.setConvUser(inputData[0]);
-							SocketChannel askedChannel = clientsChs.get(clientsIDs.indexOf(userData[1]));
+							SocketChannel askedChannel = clientsChnnls.get(clientsIDs.indexOf(userData[1]));
 							ClientState askedState = clientsState.get(askedChannel);
-							String askingUser = clientsIDs.get(clientsChs.indexOf(clientRead));
+							String askingUser = clientsIDs.get(clientsChnnls.indexOf(clientRead));
 
 							ConversationPair convPair = new ConversationPair(clientRead, askedChannel);
 
@@ -290,7 +284,7 @@ public class ServerThread implements Runnable {
 
 					case C_REFUSE:
 						pair = new ConversationPair(clientRead,
-								  clientsChs.get(clientsIDs.indexOf(userData[1])));
+								  clientsChnnls.get(clientsIDs.indexOf(userData[1])));
 						//System.out.println("Odmowa konwersacji.\nLiczba oczekujacych rozmów przed kasowaniem: " + pendingPairs.size());
 
 						pendingPairs.remove(pair);
@@ -308,7 +302,7 @@ public class ServerThread implements Runnable {
 							return;
 						}
 						pair = new ConversationPair(clientRead,
-								  clientsChs.get(clientsIDs.indexOf(userData[1])));
+								  clientsChnnls.get(clientsIDs.indexOf(userData[1])));
 						//System.out.println("Rozmowa z " + userData[1] + "przyjeta");
 						pendingPairs.remove(pair);
 						activePairs.add(pair);
@@ -359,7 +353,9 @@ public class ServerThread implements Runnable {
 								}*/
 							}
 						}
+
 				}
+
 			}
 		}
 	}
@@ -435,8 +431,8 @@ public class ServerThread implements Runnable {
 	private void dropRegisteredClient(SocketChannel client) {
 
 		//System.out.println("Removing verified client");
-		clientsIDs.remove(clientsChs.indexOf(client));
-		clientsChs.remove(client);
+		clientsIDs.remove(clientsChnnls.indexOf(client));
+		clientsChnnls.remove(client);
 
 		readBuffer.clear();
 		readBuffer.putInt(clientsIDs.size());
@@ -446,7 +442,7 @@ public class ServerThread implements Runnable {
 			}
 		}
 
-		for (SocketChannel channel : clientsChs) {
+		for (SocketChannel channel : clientsChnnls) {
 			send(channel, readBuffer.array());
 		}
 
@@ -478,7 +474,7 @@ public class ServerThread implements Runnable {
 				  ", charset=" + charset +
 				  ", appID='" + appID + '\'' +
 				  ", clientsIDs=" + clientsIDs +
-				  ", clientsChs=" + clientsChs +
+				  ", clientsChs=" + clientsChnnls +
 				  ", pendingPairs=" + pendingPairs +
 				  ", activePairs=" + activePairs +
 				  ", handlerWorkers=" + handlerWorkers +

@@ -12,7 +12,7 @@ public class ClientState {
 
 	private int state;
 
-	public ClientState() {
+	ClientState() {
 		state = WERIFYAPP;
 	}
 
