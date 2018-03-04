@@ -2,15 +2,13 @@ package piotr.messengerproject.server;
 
 import java.nio.channels.SocketChannel;
 
-/**
- * Created by Pijotr on 2016-12-29.
- */
+
 public class ConversationPair {
 
 	public SocketChannel client1;
 	public SocketChannel client2;
 
-	public ConversationPair(SocketChannel client1, SocketChannel client2) {
+	ConversationPair(SocketChannel client1, SocketChannel client2) {
 		this.client1 = client1;
 		this.client2 = client2;
 	}
@@ -22,11 +20,8 @@ public class ConversationPair {
 
 		ConversationPair that = (ConversationPair) o;
 
-		if (client1 == that.client1 && client2 == that.client2)
-			return true;
-		if (client1 == that.client2 && client2 == that.client1)
-			return true;
-		return false;
+		return client1 == that.client1 && client2 == that.client2
+				  || client1 == that.client2 && client2 == that.client1;
 	}
 
 	@Override
@@ -37,9 +32,7 @@ public class ConversationPair {
 	}
 
 	public boolean hasClient(SocketChannel client) {
-		if (client == client2)
-			return true;
-		return false;
+		return client == client2;
 	}
 }
 

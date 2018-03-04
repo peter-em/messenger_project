@@ -3,26 +3,24 @@ package piotr.messengerproject.client;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
-import java.nio.charset.Charset;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
-/**
- * Created by Pijotr on 2016-12-26.
- */
+/*
+ * class used to read data in conversation from server
+ * */
+
 public class ReadData implements Runnable {
 
-	private final Charset charset = Charset.forName("UTF-8");
-	private final int bufferSize = 1024;
 	private ByteBuffer buffer;
 	private SocketChannel channel;
 	private volatile boolean isRunning;
-	private ArrayBlockingQueue sendDataQueue;
+	private ArrayBlockingQueue<String> sendDataQueue;
 	private WriteData writer;
 
-	public ReadData(SocketChannel channel, ArrayBlockingQueue queue) {
+	ReadData(SocketChannel channel, ArrayBlockingQueue<String> queue) {
 		this.channel = channel;
-		buffer = ByteBuffer.allocate(bufferSize);
+		buffer = ByteBuffer.allocate(ClientGUI.BUFFER_SIZE*2);
 		sendDataQueue = queue;
 	}
 
@@ -55,10 +53,8 @@ public class ReadData implements Runnable {
 					data = new byte[count];
 					System.arraycopy(buffer.array(), 0, data, 0, count);
 
-					//System.out.print("Serwer: ");
+					receive = new String(data, ClientGUI.CHARSET);
 
-					receive = new String(data, charset);
-					//System.out.println(receive);
 					try {
 						sendDataQueue.put(receive);
 					} catch (InterruptedException itrEx) {
@@ -66,7 +62,6 @@ public class ReadData implements Runnable {
 					}
 
 					buffer.clear();
-
 					bytesRead = channel.read(buffer);
 				}
 

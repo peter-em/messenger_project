@@ -1,8 +1,6 @@
 package piotr.messengerproject.server;
 
-/**
- * Created by Pijotr on 2016-12-27.
- */
+
 public class ClientState {
 
 	public static final int WERIFYAPP = 0;

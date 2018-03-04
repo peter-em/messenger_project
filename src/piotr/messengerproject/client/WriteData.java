@@ -1,31 +1,27 @@
 package piotr.messengerproject.client;
 
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
-import java.nio.charset.Charset;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
-/**
- * Created by Pijotr on 2016-12-26.
- */
+/*
+ * class used to send conversation data to server
+ * */
+
 public class WriteData implements Runnable {
 
-	private final Charset charset = Charset.forName("UTF-8");
-	private final int bufferSize = 1024;
 	private ByteBuffer buffer;
 	private SocketChannel channel;
 	private ReadData reader;
 	private volatile boolean isRunning;
-	private ArrayBlockingQueue receiveDataQueue;
+	private ArrayBlockingQueue<String> receiveDataQueue;
 
-	public WriteData(SocketChannel channel, ReadData reader, ArrayBlockingQueue queue) {
+	WriteData(SocketChannel channel, ReadData reader, ArrayBlockingQueue<String> queue) {
 		this.channel = channel;
-		buffer = ByteBuffer.allocate(bufferSize);
 		this.reader = reader;
+		buffer = ByteBuffer.allocate(ClientGUI.BUFFER_SIZE*2);
 		receiveDataQueue = queue;
 	}
 
@@ -34,27 +30,16 @@ public class WriteData implements Runnable {
 
 		isRunning = true;
 		try {
-			BufferedReader stdIn = new BufferedReader(new InputStreamReader(System.in));
 			String inputArray[];
 			String input;
 			while (isRunning) {
 
-				//System.out.println("petla write");
-
-
-				//if (stdIn.ready()) {
-				//System.out.println("sa dane");
-
 				if (!receiveDataQueue.isEmpty()) {
 
-					//if ((input = stdIn.readLine()) != null) {
 					try {
-						input = (String)receiveDataQueue.take();
-						//sendOK = true;
+						input = receiveDataQueue.take();
 					} catch (InterruptedException bqEx) {
 						System.out.println(bqEx.getMessage());
-						input = "";
-						//sendOK = false;
 						continue;
 					}
 
@@ -62,11 +47,8 @@ public class WriteData implements Runnable {
 					if (inputArray[0].equalsIgnoreCase("s"))
 						break;
 
-					//if (input.length() == 0)
-					//	continue;
-
 					buffer.clear();
-					buffer.put(inputArray[1].getBytes(charset));
+					buffer.put(inputArray[1].getBytes(ClientGUI.CHARSET));
 					buffer.flip();
 					channel.write(buffer);
 					buffer.clear();
@@ -82,7 +64,6 @@ public class WriteData implements Runnable {
 			System.out.println(ioEx.getMessage());
 		}
 
-		//System.out.println("zatrzymywanie readera");
 		isRunning = false;
 		if (reader.isRunning())
 			reader.stopWorker();
@@ -96,8 +77,6 @@ public class WriteData implements Runnable {
 
 	public boolean isRunning() { return isRunning; }
 
-	public void stopWorker() {
-		isRunning = false;
-	}
+	public void stopWorker() { isRunning = false; }
 }
 

@@ -19,9 +19,9 @@ import java.util.concurrent.TimeUnit;
 public class ClientGUI extends JFrame implements ActionListener, WindowListener {
 	private static final String hostName = "127.0.0.1";
 	private static final int portNr = 6125;
-	private static final int bufferSize = 1024;
-	private static final String clientPattern = "PMateuszMessageServerClient";
-	private static final Charset CHARSET = Charset.forName("UTF-8");
+	protected static final int BUFFER_SIZE = 1024;
+	private static final String clientPattern = "MessageServerClient";
+	protected static final Charset CHARSET = Charset.forName("UTF-8");
 	private static final int BLOCKING_SIZE = 128;
 
 	private JPanel rootPanel;
@@ -31,16 +31,16 @@ public class ClientGUI extends JFrame implements ActionListener, WindowListener 
 	private JTabbedPane appPages;
 	private JTextField chooseUser;
 	private JButton sendRequest;
-	private JList usersList;
+	private JList<Object> usersList;
 	private JPanel mainClient;
 	private JLabel ownerName;
 
 	private static final Color textAreaColor = new Color(84, 88, 90);
 	private static final Color textColor = new Color(242,242,242);
-	private DefaultListModel defListModel;
-	private ArrayBlockingQueue<String> mainDataQueue;
-	private Map<String, ArrayBlockingQueue> readThreads;
-	private Map<String, ArrayBlockingQueue> writeThreads;
+	private DefaultListModel<Object> defListModel;
+	protected static ArrayBlockingQueue<String> mainDataQueue;
+	private Map<String, ArrayBlockingQueue<String>> readThreads;
+	private Map<String, ArrayBlockingQueue<String>> writeThreads;
 	private Map<String, JTextArea> printAreas;
 	private Map<String, JTextArea> writeAreas;
 
@@ -73,7 +73,7 @@ public class ClientGUI extends JFrame implements ActionListener, WindowListener 
 
 		usersList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
 		usersList.setLayoutOrientation(JList.VERTICAL);
-		defListModel = new DefaultListModel();
+		defListModel = new DefaultListModel<>();
 		usersList.setModel(defListModel);
 
 		usersCount.setText("Active users: " + defListModel.size());
@@ -83,9 +83,8 @@ public class ClientGUI extends JFrame implements ActionListener, WindowListener 
 		printAreas = new HashMap<>();
 		writeAreas = new HashMap<>();
 
-		//for windows OS
 		try {
-			UIManager.setLookAndFeel("com.sun.java.swing.plaf.windows.WindowsLookAndFeel");
+			UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
 		} catch(Exception ex) {
 			ex.printStackTrace();
 		}
@@ -194,7 +193,7 @@ public class ClientGUI extends JFrame implements ActionListener, WindowListener 
 					}
 				}
 
-				buffer = ByteBuffer.allocate(bufferSize);
+				buffer = ByteBuffer.allocate(BUFFER_SIZE);
 				System.out.println("Sending certificate.");
 				buffer.clear();
 				buffer.put(clientPattern.getBytes(CHARSET));
@@ -205,7 +204,7 @@ public class ClientGUI extends JFrame implements ActionListener, WindowListener 
 				int response = -1;
 				while (response == -1) {
 
-					while (true) {
+					while (userName.length() < 3) {
 						userName = JOptionPane.showInputDialog(rootPanel, "Enter Your login to start,\n" +
 								  "or press 'Cancel' to exit app.\nLogin must contain " +
 								  "at least 3 characters.", "Enter Login", JOptionPane.INFORMATION_MESSAGE);
@@ -213,9 +212,8 @@ public class ClientGUI extends JFrame implements ActionListener, WindowListener 
 							setVisible(false);
 							dispose();
 							return;
-						} else if (userName.length() > 2) {
-							break;
 						}
+						userName = userName.trim();
 					}
 
 					buffer.clear();
@@ -240,7 +238,6 @@ public class ClientGUI extends JFrame implements ActionListener, WindowListener 
 				setVisible(true);
 
 				// wyswietlanie listy uzytkownikow
-				//
 				boolean clientsUpdate = true;
 				boolean awaitingConv = false;
 				boolean sendOK;
@@ -310,44 +307,39 @@ public class ClientGUI extends JFrame implements ActionListener, WindowListener 
 							usersData = new String(buffer.array(), CHARSET);
 							String[] convUser = usersData.split(";");
 
-							new Thread(new DialogsHandler(DialogsHandler.CONV_REQUEST, convUser[0])).start();
+							new Thread(new DialogsHandler(DialogsHandler.CONV_REQUEST, convUser[0], rootPanel)).start();
 
 							awaitingConv = true;
 							convUsers.add(convUser[0]);
 
 						} else if (response == -20) {
-							//System.out.println("Taka rozmowa już się rozpoczęła");
+							//response when asked conv has already started
 							usersData = new String(buffer.array(), CHARSET);
-							new Thread(new DialogsHandler(DialogsHandler.CONV_STARTED, usersData.split(";")[0])).start();
+							new Thread(new DialogsHandler(DialogsHandler.CONV_STARTED, usersData.split(";")[0], rootPanel)).start();
 
 						} else if (response == -30) {
-
+							//asked user refused conversation
 							usersData = new String(buffer.array(), CHARSET);
-
-							//System.out.println("Wybrany użytkownik " + usersData.split(";")[0] + " odmówił rozmowy");
-							new Thread(new DialogsHandler(DialogsHandler.CONV_REFUSED, usersData.split(";")[0])).start();
+							new Thread(new DialogsHandler(DialogsHandler.CONV_REFUSED, usersData.split(";")[0], rootPanel)).start();
 						} else if (response == -40) {
 
-							//odebranie odpowiedzi o zaakceptowaniu rozmowy
+							//user accepted invitation
 							usersData = new String(buffer.array(), CHARSET);
 							String[] connectData = usersData.split(";");
+							//connectData contains - [0]: port number, [1]: server address,
+							//[2] and [3]: logins of users starting conversation
+							String startConvUser = connectData[2].equals(userName)?connectData[3]:connectData[2];
 
-
-							String starConvUser = connectData[2].equals(userName)?connectData[3]:connectData[2];
-							//System.out.println("Uzytkownik " + starConvUser + " zgodzil sie na rozmowe");
-
-							//System.out.println("Laczenie z handlerem na adresie "
-							// + connectData[1] + " i porcie " + connectData[0]);
+							//confirm connection
 							buffer.clear();
 							buffer.put(("c;" + userName + ";" + connectData[0] + ";").getBytes(CHARSET));
 							buffer.flip();
 							channel.write(buffer);
 
-							if (doConnect(connectData[1], Integer.parseInt(connectData[0]), starConvUser)) {
-								createConvPage(starConvUser);
+							if (doConnect(connectData[1], Integer.parseInt(connectData[0]), startConvUser)) {
+								createConvPage(startConvUser);
 							}
 						}
-
 					}
 
 					if (!mainDataQueue.isEmpty()) {
@@ -364,46 +356,41 @@ public class ClientGUI extends JFrame implements ActionListener, WindowListener 
 						buffer.clear();
 						if (input.length() > 0) {
 							inputArray = input.split(";");
-
+							//inputArray - [0]: type of message, [1]: sender, [2]: message content
 							if (inputArray[0].equals("q")) {
 								break;
-							} else if (inputArray[0].equals("y") && awaitingConv) {
-								//wysylanie informacji zwrotnej o przyjeciu rozmowy
-								buffer.put(("y;" + inputArray[1] + ";" + userName + ";").getBytes(CHARSET));
-								convUsers.remove(inputArray[1]);
+							} else if (awaitingConv) {
+								if (inputArray[0].equals("y")) {
+									//inform server about accepted conv
+									buffer.put(("y;" + inputArray[1] + ";" + userName + ";").getBytes(CHARSET));
+									convUsers.remove(inputArray[1]);
+								} else {
+									//inform server about refused conv
+									buffer.put(("n;" + inputArray[1] + ";" + userName + ";").getBytes(CHARSET));
+									convUsers.remove(inputArray[1]);
+								}
 								if (convUsers.isEmpty())
 									awaitingConv = false;
-							} else if (inputArray[0].equals("n") && awaitingConv) {
-								//wysylanie informacji zwrotnej o odrzuceniu rozmowy
-								buffer.put(("n;" + inputArray[1] + ";" + userName + ";").getBytes(CHARSET));
-								convUsers.remove(inputArray[1]);
-								if (convUsers.isEmpty())
-									awaitingConv = false;
-							} else if (inputArray[0].equals("a") && clientsNames.contains(inputArray[1])) {
-								//wysylanie zapytania o nowa rozmowe
-								//System.out.println("Wysyłam zapytanie, input: " + inputArray[1]);
-								buffer.put(("a;" + inputArray[1] + ";").getBytes(CHARSET));
+
 							} else if (inputArray[0].equals("s")) {
-								//kopiowanie tekstu clienta w danej rozmowie do okna wynikowego
-								//System.out.println("Kopiuje tekst rozmowy " + inputArray[1]);
+								//copy and process received message
 								JTextArea tmpPrint = printAreas.get(inputArray[1]);
 								calendar = Calendar.getInstance();
-								tmpPrint.append("ja, " + dateFormat.format(calendar.getTime()) + "\n");
+								tmpPrint.append("me, " + dateFormat.format(calendar.getTime()) + "\n");
 								tmpPrint.append(inputArray[2] + "\n\n");
 								tmpPrint.setCaretPosition(tmpPrint.getDocument().getLength());
-
-								//wyslanie danych do wlasciwego writera (rozmowcy)
+								//display message in proper conversation tab
 								writeThreads.get(inputArray[1]).add("g;" + inputArray[2]);
 
 							} else if (inputArray[0].equals("t")) {
-
-								//przesłanie impulsu zakonczenia rozmowy do writera
+								//send termination information to writer
 								writeThreads.get(inputArray[1]).add("s;");
-								//usuniecie zmapowanych z rozmowa referencji do BlockingQueues i JTextAreas
+								//remove references to BlockingQueues and JTextAreas mapped to conversation
 								removeMapings(inputArray[1]);
-
-							} else
-								continue;
+							} else if (inputArray[0].equals("a") && clientsNames.contains(inputArray[1])) {
+								//send conversation request
+								buffer.put(("a;" + inputArray[1] + ";").getBytes(CHARSET));
+							}
 						}
 						if (sendOK) {
 							buffer.flip();
@@ -411,7 +398,7 @@ public class ClientGUI extends JFrame implements ActionListener, WindowListener 
 						}
 					}
 
-					//przegladniecie kolejek czy sa dane od readerow do wyswietlenia
+					//check queues if there are any data from readers to display
 					for (String convKey : readThreads.keySet()) {
 						ArrayBlockingQueue queue = readThreads.get(convKey);
 						if (!queue.isEmpty()) {
@@ -422,9 +409,8 @@ public class ClientGUI extends JFrame implements ActionListener, WindowListener 
 								continue;
 							}
 
-							//specjalna sytuacja, przez blokade wysylania pustych stringow
-							//do rozmowcy, jedyna mozliwosc zerowego stringa pochodzi
-							//od danego readera rozmowy i informuje o jej zakonczeniu
+							//special case, due to inability to send empty string,
+							//only conv reader can input it to signal EoC
 							if (input.length() == 0) {
 								for (int i = 1; i < appPages.getTabCount(); i++) {
 									if (appPages.getTitleAt(i).equals(convKey)) {
@@ -445,7 +431,7 @@ public class ClientGUI extends JFrame implements ActionListener, WindowListener 
 						}
 					}
 
-					//usuwanie mapowania dla zakonczonych rozmoww
+					//remove mapping for closed conversation
 					if (!removingConvs.isEmpty()) {
 						for (String str : removingConvs) {
 							removeMapings(str);
@@ -460,8 +446,6 @@ public class ClientGUI extends JFrame implements ActionListener, WindowListener 
 						itrEx.printStackTrace();
 					}
 				}
-				//wyslanie informacji do wszystkich istniejacych rozmow o zamknieciu polaczen
-				//^ ^ ^ ^ to chyba juz nie potrzebne
 
 			} catch (IOException ioEx) {
 				System.err.println("Connection problem.");
@@ -480,7 +464,7 @@ public class ClientGUI extends JFrame implements ActionListener, WindowListener 
 
 		private void performSafeClose() {
 
-			for (ArrayBlockingQueue queue : writeThreads.values()) {
+			for (ArrayBlockingQueue<String> queue : writeThreads.values()) {
 				queue.add("s;");
 			}
 			setVisible(false);
@@ -488,43 +472,7 @@ public class ClientGUI extends JFrame implements ActionListener, WindowListener 
 		}
 	}
 
-	//klasa do wyswietlania okienek z informacjami
-	private class DialogsHandler implements Runnable {
-
-		public static final int CONV_STARTED = 1;
-		public static final int CONV_REQUEST = 2;
-		public static final int CONV_REFUSED = 3;
-		private String convUser;
-		private int dialogType;
-
-		DialogsHandler(int dialog, String convUser) {
-			dialogType = dialog;
-			this.convUser = convUser;
-		}
-
-		@Override
-		public void run() {
-			if (dialogType == 1) {
-				JOptionPane.showMessageDialog(rootPanel, "Conversation with user " + convUser
-						  + "\nhas already started", "Request Refused", JOptionPane.INFORMATION_MESSAGE);
-			} else if (dialogType == 2) {
-				int answr = JOptionPane.showConfirmDialog(rootPanel, "User '" + convUser + "' wants to talk,\n"
-						  + "Do You agree?", "New Conversation", JOptionPane.YES_NO_OPTION, JOptionPane.INFORMATION_MESSAGE);
-				if (answr == JOptionPane.NO_OPTION || answr == JOptionPane.CLOSED_OPTION) {
-					System.out.println("Odrzucono rozmowę");
-					mainDataQueue.add(new String("n;" + convUser + ";"));
-				} else {
-					System.out.println("Zaakceptowano rozmowe");
-					mainDataQueue.add(new String("y;" + convUser + ";"));
-				}
-			} else if (dialogType == 3) {
-				JOptionPane.showMessageDialog(rootPanel, "User '" + convUser + "' refused conversation",
-						  "Conversation canceled", JOptionPane.INFORMATION_MESSAGE);
-			}
-		}
-	}
-
-	//nadpisana klasa do obslugi eventow klawiatury
+	//class taking care of keyboard events
 	private class WriterListener implements KeyListener {
 		@Override
 		public void keyTyped(KeyEvent e) {}
@@ -563,6 +511,7 @@ public class ClientGUI extends JFrame implements ActionListener, WindowListener 
 		public void keyReleased(KeyEvent e) {}
 	}
 
+	//class handling conversation tabs changes
 	private class TabChangeListener implements ChangeListener {
 
 		@Override
@@ -577,13 +526,13 @@ public class ClientGUI extends JFrame implements ActionListener, WindowListener 
 		}
 	}
 
-	//metoda tworzaca nowa karte jezeli rozmowa potwierdzona
+	//method creating new tab for conversation
 	private void createConvPage(String convUser) {
 
 		JTextArea printArea = new JTextArea();
-		printArea.setFont(new Font("Consolas", 0, 13));
+		printArea.setFont(new Font("Consolas", Font.PLAIN, 13));
 		JTextArea writeArea = new JTextArea();
-		writeArea.setFont(new Font("Consolas", 0, 13));
+		writeArea.setFont(new Font("Consolas", Font.PLAIN, 13));
 		printArea.setEditable(false);
 		printArea.setWrapStyleWord(true);
 		printArea.setLineWrap(true);
@@ -630,11 +579,12 @@ public class ClientGUI extends JFrame implements ActionListener, WindowListener 
 			SocketChannel convChannel = SocketChannel.open();
 			convChannel.configureBlocking(false);
 			convChannel.connect(new InetSocketAddress(host, port));
-			while (!convChannel.finishConnect()) {
-			}
 
-			readThreads.put(convUser, new ArrayBlockingQueue(128));
-			writeThreads.put(convUser, new ArrayBlockingQueue(128));
+			if (!convChannel.finishConnect())
+				throw new IOException("Connection could not be finalized");
+
+			readThreads.put(convUser, new ArrayBlockingQueue<>(BLOCKING_SIZE));
+			writeThreads.put(convUser, new ArrayBlockingQueue<>(BLOCKING_SIZE));
 
 			ReadData reader;
 			WriteData writer;

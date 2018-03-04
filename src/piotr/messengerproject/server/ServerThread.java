@@ -18,21 +18,20 @@ import java.util.concurrent.Executors;
 public class ServerThread implements Runnable {
 
 	private static final int CONV_MAX = 40;
-	private static final int BUFF_SIZE = 1024;
+	protected static final int BUFF_SIZE = 1024;
 	private static final String C_ASK = "a";
 	private static final String C_REFUSE = "n";
 	private static final String C_ACCEPT = "y";
 	private static final String C_CONFIRM = "c";
 	private static final Charset charset = Charset.forName("UTF-8");
-	private static final String appID = "PMateuszMessageServerClient";
+	private static final String appID = "MessageServerClient";
 
 	private String hostName;
 	private int listenPort;
 	private ServerSocketChannel serverSocket;
 	private Selector selector;
-	private boolean isRunning = false;
+	//private boolean isRunning = false;
 	private ByteBuffer readBuffer;
-	//lista instancji ChangeRequest
 	private List<ChangeRequest> changeRequests;
 	//mapowanie socketChannel clienta do listy instancji ByteBufforow
 	private Map<SocketChannel, List<ByteBuffer>> pendingData;
@@ -44,7 +43,7 @@ public class ServerThread implements Runnable {
 	private List<ConversationPair> activePairs;
 	private List<HandleConversation> handlerWorkers;
 	private List<Integer> handlersPorts;
-	private ArrayBlockingQueue handlersEndData;
+	private ArrayBlockingQueue<ConversationEnd> handlersEndData;
 
 
 	ServerThread(String hostName, int listenPort) {
@@ -61,7 +60,7 @@ public class ServerThread implements Runnable {
 		activePairs = new ArrayList<>();		//or maybe LinkedList<> should be used
 		handlerWorkers = new ArrayList<>();	//or maybe LinkedList<> should be used
 		handlersPorts = new ArrayList<>();	//or maybe LinkedList<> should be used
-		handlersEndData = new ArrayBlockingQueue(CONV_MAX*2);
+		handlersEndData = new ArrayBlockingQueue<>(CONV_MAX*2);
 		openSocket();
 		handlersExecutor = Executors.newFixedThreadPool(CONV_MAX);
 	}
@@ -72,23 +71,19 @@ public class ServerThread implements Runnable {
 		while (!Thread.interrupted()) {
 			try {
 
-				//int countChanges = 0;
 				for (ChangeRequest change : changeRequests) {
-					//countChanges++;
 					//if (change.type == ChangeRequest.CHANGEOPS) {
 						SelectionKey selectionKey = change.socket.keyFor(selector);
 						selectionKey.interestOps(change.ops);
 					//}
 				}
-
-				//System.err.println("CountChanges: " + countChanges);
 				changeRequests.clear();
 
 				//clear leftovers from terminated conversation handler
 				while (!handlersEndData.isEmpty()) {
 					ConversationEnd data;
 					try {
-						data = (ConversationEnd)handlersEndData.take();
+						data = handlersEndData.take();
 						handlersPorts.remove(handlersPorts.indexOf(data.portNr));
 						activePairs.remove(data.convPair);
 						handlerWorkers.remove(data.worker);
@@ -103,7 +98,8 @@ public class ServerThread implements Runnable {
 				Iterator selectedKeys;
 				SelectionKey key;
 				selectedKeys = selector.selectedKeys().iterator();
-				while (selectedKeys.hasNext() && isRunning) {
+				//while (selectedKeys.hasNext() && isRunning) {
+				while (selectedKeys.hasNext()) {
 					key = (SelectionKey) selectedKeys.next();
 					selectedKeys.remove();
 
@@ -122,7 +118,7 @@ public class ServerThread implements Runnable {
 			} catch (IOException ioEx) {
 				System.err.println("Problem occured while listenint for events");
 				System.out.println(ioEx.getMessage());
-				isRunning = false;
+				//isRunning = false;
 			}
 		}
 
@@ -406,7 +402,7 @@ public class ServerThread implements Runnable {
 			//sKey.attach()
 
 			System.out.println("Starting listening on port " + listenPort);
-			isRunning = true;
+			//isRunning = true;
 		} catch (IOException ioEx) {
 			System.out.println("Problem occured while opening listening port");
 			System.out.println(ioEx.getMessage());
@@ -454,7 +450,7 @@ public class ServerThread implements Runnable {
 
 	public void stopServer() {
 		System.out.println("Stopping server");
-		isRunning = false;
+		//isRunning = false;
 	}
 
 	@Override
@@ -465,7 +461,7 @@ public class ServerThread implements Runnable {
 				  ", listenPort=" + listenPort +
 				  ", serverSocket=" + serverSocket +
 				  ", selector=" + selector +
-				  ", isRunning=" + isRunning +
+				  //", isRunning=" + isRunning +
 				  ", readBuffer=" + readBuffer +
 				  ", changeRequests=" + changeRequests +
 				  ", pendingData=" + pendingData +

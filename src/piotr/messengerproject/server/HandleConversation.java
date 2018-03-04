@@ -21,35 +21,32 @@ public class HandleConversation implements Runnable {
 	private String handlerAddress;
 	private int handlerPort;
 	private ByteBuffer readBuffer;
-	private byte[] rawData;
-	private byte[] copyData;
 	private int clientCount;
 	private volatile boolean isRunning;
 	private volatile boolean isWaiting;
-	private boolean stopWorker;
-	private List changeRequests = new LinkedList();
-	private Map pendingData = new HashMap();
-	private ArrayBlockingQueue handlersEndData;
+	private List<ChangeRequest> changeRequests;
+	private Map<SocketChannel, List<ByteBuffer>> pendingData;
+	private ArrayBlockingQueue<ConversationEnd> handlersEndData;
 	private ConversationPair convPair;
 
 	HandleConversation(String address, int port,
-									  ArrayBlockingQueue queue, ConversationPair pair) {
+									  ArrayBlockingQueue<ConversationEnd> queue, ConversationPair pair) {
+		changeRequests = new LinkedList<>();
+		pendingData = new HashMap<>();
 		handlerAddress = address;
 		handlerPort = port;
 		handlersEndData = queue;
 		convPair = pair;
-		readBuffer = ByteBuffer.allocate(2048);
+		readBuffer = ByteBuffer.allocate(ServerThread.BUFF_SIZE*2);
 		clientCount = 0;
 		isRunning = false;
 		isWaiting = true;
-		stopWorker = false;
 		openSocket();
 	}
 
 	@Override
 	public void run() {
 
-		//System.out.println(Thread.currentThread().getName() + " czekam.");
 
 		int timer = 0;
 		try {
@@ -70,33 +67,26 @@ public class HandleConversation implements Runnable {
 		Iterator selectedKeys;
 		SelectionKey key;
 		while (isRunning) {
-			//System.out.println("Handler " + Thread.currentThread().getName() + " startuje");
 			try {
-				Iterator changes = changeRequests.iterator();
-				while (changes.hasNext()) {
-					ChangeRequest change = (ChangeRequest) changes.next();
-					switch (change.type) {
+				for (ChangeRequest changeRequest : changeRequests) {
+					switch (changeRequest.type) {
 						case ChangeRequest.CHANGEOPS:
-							SelectionKey swKey = change.socket.keyFor(talkSelector);
-							swKey.interestOps(change.ops);
+							SelectionKey swKey = changeRequest.socket.keyFor(talkSelector);
+							swKey.interestOps(changeRequest.ops);
 					}
 				}
 				changeRequests.clear();
 				talkSelector.select();
 
-				//przejscie po zbiorze kluczy dla ktorych dostepne sa zdarzenia
 				selectedKeys = talkSelector.selectedKeys().iterator();
 				while (selectedKeys.hasNext() && isRunning) {
-					//System.out.println("jest kolejny klucz");
 					key = (SelectionKey)selectedKeys.next();
 					selectedKeys.remove();
 
 					if (!key.isValid())
 						continue;
 
-					//sprawdzanie jakie zdarzenie jest dostepne oraz jego obsluga
 					if (key.isAcceptable()) {
-						//System.out.println("\n##### nowy client #####");
 						accept(key);
 					} else if (key.isReadable())
 						read(key);
@@ -118,9 +108,8 @@ public class HandleConversation implements Runnable {
 
 	private void accept(SelectionKey key) throws IOException {
 		ServerSocketChannel serverSocketChannel = (ServerSocketChannel)key.channel();
-		//System.out.println("accept dla serverSocketu: " + serverSocketChannel.getLocalAddress());
 
-		//akceptowanie polaczenia, ustawianie go w trybie non-blocking
+		//accept connection, set it to non-blocking mode
 		if (clientCount < 2) {
 			SocketChannel newClient = serverSocketChannel.accept();
 			if (clientCount == 0)
@@ -129,7 +118,6 @@ public class HandleConversation implements Runnable {
 				client2 = newClient;
 			clientCount++;
 
-			//Socket socket = client.socket();
 			newClient.configureBlocking(false);
 			if (clientCount == 2) {
 				client1.register(talkSelector, SelectionKey.OP_READ);
@@ -138,26 +126,22 @@ public class HandleConversation implements Runnable {
 		} else {
 			SocketChannel cancelCh = serverSocketChannel.accept();
 			cancelCh.close();
-			System.err.println("Klient odrzucony, rozmowa prywatna");
+			System.err.println("Client rejected, doesn't belong to this conversation");
 		}
 	}
 
 	private void read(SelectionKey key) throws IOException {
 		int bytesRead;
-		//System.out.println("+++++++ czytam w handlerThread");
-		//System.out.println("wywoluje read: " + Thread.currentThread().getName());
 		SocketChannel clientRead = (SocketChannel)key.channel();
-		//czyszczenie bufora odczytu przed przyjeciem nowych danych
 		readBuffer.clear();
-		//proba odczytania danych z kanalu
-
+		//read data from channel
 		try {
 			bytesRead = clientRead.read(readBuffer);
 		} catch (IOException ioEx) {
-			//blad spowodowany zerwaniem polaczenia przez clienta
-			//anulowanie wybranego klucza (selecion key) i zamkniecie kanalu
-			System.err.println("Błąd podczas odczytywania danych z kanału. Zamykam połącznie");
-			System.out.println(ioEx.getMessage());
+			//exception caused by client breaking connection
+			//cancel selection key, close channel
+			System.err.println("Error occurred while reading data. Closing channel");
+			System.err.println(ioEx.getMessage());
 			key.cancel();
 			if (client1.isOpen())
 				client1.close();
@@ -168,42 +152,37 @@ public class HandleConversation implements Runnable {
 		}
 
 		if (bytesRead == -1) {
-			//client czysto zakonczyl polaczenie, serwer rowniez zamyka kanal
+			//client ended conversation cleanly, server closing channel
 			if (client1.isOpen())
 				client1.close();
 			if (client2.isOpen())
 				client2.close();
 			key.cancel();
 			isRunning = false;
-			//System.out.println("Koniec rozmowy, jeden z klientów zakończył połączenie\n");
-			//return;
 
-		} else if (bytesRead == 0) {
-			System.err.println("$$$ ---- Klient wyslal 0 bajtow"); //malo prawdopodobna sytuacja
 		} else if (bytesRead > 0) {
 
 			if (clientRead == client1)
 				clientRead = client2;
 			else
 				clientRead = client1;
-			//data = readBuffer.array();
-			copyData = new byte[bytesRead];
+			byte[] copyData = new byte[bytesRead];
 			System.arraycopy(readBuffer.array(), 0, copyData, 0, bytesRead);
 			send(clientRead, copyData);
-		}
+		} else
+			System.err.println("!!!! Client send 0 bytes"); //this should not happen
 	}
 
 	private void write(SelectionKey key) throws IOException {
 		SocketChannel clientSocket = (SocketChannel) key.channel();
-		List queue = (List) pendingData.get(clientSocket);
+		List queue = pendingData.get(clientSocket);
 
 		ByteBuffer buffer;
 		while (!queue.isEmpty()) {
 			buffer = (ByteBuffer) queue.get(0);
-			//System.out.println("%%% buffer: " + buffer.remaining());
 			clientSocket.write(buffer);
 			if (buffer.remaining() > 0) {
-				System.out.println("!!!! bufor nie zostal oprozniony");
+				System.err.println("!!!! Buffer was not emptied");
 				break;
 			}
 			queue.remove(0);
@@ -213,15 +192,15 @@ public class HandleConversation implements Runnable {
 			key.interestOps(SelectionKey.OP_READ);
 	}
 
-	public void send(SocketChannel client, byte[] data) {
+	private void send(SocketChannel client, byte[] data) {
 
 		changeRequests.add(new ChangeRequest(client, ChangeRequest.CHANGEOPS, SelectionKey.OP_WRITE));
-		List queue = (List)pendingData.get(client);
-		if (queue == null) {
-			queue = new ArrayList();
-			pendingData.put(client, queue);
-		}
-		queue.add(ByteBuffer.wrap(data));
+
+		//pendingData.computeIfAbsent(client, value -> new ArrayList<>());
+		//List<ByteBuffer> queue = pendingData.get(client);
+		//queue.add(ByteBuffer.wrap(data));
+		pendingData.computeIfAbsent(client, value -> new ArrayList<>()).add
+				  (ByteBuffer.wrap(data));
 	}
 
 	private void openSocket() {
@@ -233,11 +212,10 @@ public class HandleConversation implements Runnable {
 			handler.socket().bind(new InetSocketAddress(handlerAddress, handlerPort));
 			handler.register(talkSelector, SelectionKey.OP_ACCEPT);
 
-			//System.out.println("Starting conversation handler on port: " + handlerPort);
 			isRunning = true;
 		} catch (IOException ioEx) {
 			System.err.println("Problem occured while opening handler port");
-			System.out.println(ioEx.getMessage());
+			System.err.println(ioEx.getMessage());
 		}
 	}
 
@@ -249,17 +227,13 @@ public class HandleConversation implements Runnable {
 			}
 		} catch (IOException ioEx) {
 			System.err.println("Problem occured while closing server socket");
-			System.out.println(ioEx.getMessage());
+			System.err.println(ioEx.getMessage());
 		}
 	}
 
-	public boolean isRunning() {
-		return isRunning;
-	}
+	public boolean isRunning() { return isRunning; }
 
-	public boolean isWaiting() {
-		return isWaiting;
-	}
+	public boolean isWaiting() { return isWaiting; }
 
 	public void startHandler() {
 		if (isWaiting) {
@@ -267,8 +241,6 @@ public class HandleConversation implements Runnable {
 		}
 	}
 
-	public int getHandlerSocket() {
-		return handlerPort;
-	}
+	public int getHandlerSocket() { return handlerPort; }
 }
 

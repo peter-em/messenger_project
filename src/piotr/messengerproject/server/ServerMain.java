@@ -1,7 +1,6 @@
 package piotr.messengerproject.server;
 
 import java.io.*;
-import java.util.concurrent.TimeUnit;
 
 
 public class ServerMain {
@@ -27,14 +26,8 @@ public class ServerMain {
 			ioex.printStackTrace();
 		}
 
-		//try {
-		//	TimeUnit.MILLISECONDS.sleep(10);
-			server.stopServer();
-			task.interrupt();
-
-		//} catch (InterruptedException itrEx) {
-		//	itrEx.printStackTrace();
-		//}
+		server.stopServer();
+		task.interrupt();
 
 	}
 
