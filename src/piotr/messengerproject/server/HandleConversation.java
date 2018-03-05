@@ -29,12 +29,12 @@ public class HandleConversation implements Runnable {
 	private ArrayBlockingQueue<ConversationEnd> handlersEndData;
 	private ConversationPair convPair;
 
-	HandleConversation(String address, int port,
+	HandleConversation(String handlerAddress, int handlerPort,
 									  ArrayBlockingQueue<ConversationEnd> queue, ConversationPair pair) {
 		changeRequests = new LinkedList<>();
 		pendingData = new HashMap<>();
-		handlerAddress = address;
-		handlerPort = port;
+		this.handlerAddress = handlerAddress;
+		this.handlerPort = handlerPort;
 		handlersEndData = queue;
 		convPair = pair;
 		readBuffer = ByteBuffer.allocate(ServerThread.BUFF_SIZE*2);

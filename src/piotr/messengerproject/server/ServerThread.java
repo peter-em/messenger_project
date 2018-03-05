@@ -23,7 +23,7 @@ public class ServerThread implements Runnable {
 	private static final String C_REFUSE = "n";
 	private static final String C_ACCEPT = "y";
 	private static final String C_CONFIRM = "c";
-	private static final Charset charset = Charset.forName("UTF-8");
+	private static final Charset CHARSET = Charset.forName("UTF-8");
 	private static final String appID = "MessageServerClient";
 
 	private String hostName;
@@ -59,7 +59,7 @@ public class ServerThread implements Runnable {
 		pendingPairs = new ArrayList<>(); 	//or maybe LinkedList<> should be used
 		activePairs = new ArrayList<>();		//or maybe LinkedList<> should be used
 		handlerWorkers = new ArrayList<>();	//or maybe LinkedList<> should be used
-		handlersPorts = new ArrayList<>();	//or maybe LinkedList<> should be used
+		handlersPorts = new LinkedList<>();	//or maybe LinkedList<> should be used
 		handlersEndData = new ArrayBlockingQueue<>(CONV_MAX*2);
 		openSocket();
 		handlersExecutor = Executors.newFixedThreadPool(CONV_MAX);
@@ -137,7 +137,6 @@ public class ServerThread implements Runnable {
 		newClient.register(selector, SelectionKey.OP_READ);
 		//System.out.println("Client accepted, waiting for data");
 		clientsState.put(newClient, new ClientState());
-		//System.out.println("Client count: " + clientCount);
 	}
 
 	private void read(SelectionKey key) throws IOException {
@@ -155,17 +154,10 @@ public class ServerThread implements Runnable {
 			//cancel 'SelectionKey key' and close corresponding channel
 			System.err.println("SERVER: Exception raised while reading data. Closing client connection");
 			System.err.println(ioEx.getMessage());
-
-			if (state.getState() > ClientState.WAITFORUID) {
-				dropRegisteredClient(clientRead);
-			}
-			clientsState.remove(clientRead);
-			key.cancel();
-			clientRead.close();
-			return;
+			bytesRead = -1;
 		}
 
-		if (bytesRead == -1) {
+		if (bytesRead <= 0) {
 			//client ended connection clearly, server closes corresponding channel
 			if (state.getState() > ClientState.WAITFORUID) {
 				dropRegisteredClient(clientRead);
@@ -173,192 +165,172 @@ public class ServerThread implements Runnable {
 			clientsState.remove(clientRead);
 			key.cancel();
 			clientRead.close();
-			return;
 		}
 
-		if (bytesRead > 0) {
-			readBuffer.flip();
-			if (state.getState() == ClientState.WERIFYAPP) {
-			//perform app veryfication
-				byte[] dataCopy = new byte[appID.length()];
-				System.arraycopy(readBuffer.array(), 0, dataCopy, 0, appID.length());
+		readBuffer.flip();
+		if (state.getState() == ClientState.WERIFYAPP) {
+		//perform app veryfication
+			byte[] dataCopy = new byte[appID.length()];
+			System.arraycopy(readBuffer.array(), 0, dataCopy, 0, appID.length());
 
-				if (!checkClientID(new String(dataCopy, charset))) {
-					//client hasnt provided proper ID
-					//(invalid app) --> dumping connection
-					clientRead.close();
-					key.cancel();
-					clientsState.remove(clientRead);
-				} else {
-					//change client state if application is valid
-					state.setState(ClientState.WAITFORUID);
-				}
-			} else if (state.getState() == ClientState.WAITFORUID) {
-				String clientData = new String(readBuffer.array(), charset);
-				String clientId = clientData.split(";")[0];
+			if (!checkClientID(new String(dataCopy, CHARSET))) {
+				//client hasnt provided proper ID
+				//(invalid app) --> dumping connection
+				clientRead.close();
+				key.cancel();
+				clientsState.remove(clientRead);
+			} else {
+				//change client state if application is valid
+				state.setState(ClientState.WAITFORUID);
+			}
+		} else if (state.getState() == ClientState.WAITFORUID) {
+			String clientData = new String(readBuffer.array(), CHARSET);
+			String clientId = clientData.split(";")[0];
 
-				//veryfication successful, returning list of connected clients
-				//or -1 if provided login is already in use
-				readBuffer.clear();
-				if (clientsIDs.isEmpty()) {
-					readBuffer.putInt(1);
-					clientsIDs.add(clientId);
-					clientsChnnls.add(clientRead);
-				} else {
+			//veryfication successful, returning list of connected clients
+			//or -1 if provided login is already in use
+			readBuffer.clear();
+			if (clientsIDs.isEmpty()) {
+				readBuffer.putInt(1);
+				clientsIDs.add(clientId);
+				clientsChnnls.add(clientRead);
+			} else {
 
-					readBuffer.putInt(clientsIDs.size() + 1);
-					for (String str : clientsIDs) {
-						if (str.equalsIgnoreCase(clientId)) {
-							readBuffer.clear();
-							readBuffer.putInt(-1);
-							readBuffer.flip();
-							send(clientRead, readBuffer.array());
-							return;
-						}
-						readBuffer.put((str.concat(";")).getBytes(charset));
-					}
-					readBuffer.put((clientId.concat(";")).getBytes(charset));
-
-					clientsIDs.add(clientId);
-					clientsChnnls.add(clientRead);
-				}
-
-				//change client state from waiting for veryfication
-				//into enabling conversations
-				state.setState(ClientState.SERVECLIENT);
-				//update all connected clients with information
-				//about quantity and logins of active users
-				readBuffer.flip();
-				for (SocketChannel clnt : clientsChnnls) {
-					send(clnt, readBuffer.array());
-				}
-
-			} else if (state.getState() == ClientState.SERVECLIENT) {
-				//Veryfied client tries to create new conversation
-				ConversationPair pair;
-				String[] userData = (new String(readBuffer.array(), charset)).split(";");
-
-				//userData[0] holds info about type of message (ask for, refuse, confirm conversation)
-				//userData[1] holds info about user that this client wants to talk
-				switch (userData[0]) {
-					case C_ASK:
-						//
-						if (clientsIDs.contains(userData[1])) {
-							//state.setConvUser(inputData[0]);
-							SocketChannel askedChannel = clientsChnnls.get(clientsIDs.indexOf(userData[1]));
-							ClientState askedState = clientsState.get(askedChannel);
-							String askingUser = clientsIDs.get(clientsChnnls.indexOf(clientRead));
-
-							ConversationPair convPair = new ConversationPair(clientRead, askedChannel);
-
-							readBuffer.clear();
-							//System.out.println("askingUser: " + askingUser);
-							//System.out.println("askedUser: " + askedUser[0]);
-							if (!pendingPairs.contains(convPair) && !activePairs.contains(convPair)) {
-								//odpowiedz jesli rozmowca dostepny
-								//i nie ma jeszcze takiej rozmowy
-								pendingPairs.add(convPair);
-								//askedState.setState(ClientState.ASKFORCONV);
-								//System.out.println("Nie ma takiej rozmowy");
-								//System.out.println("Liczba rozmów: " + (pendingPairs.size() + activePairs.size()));
-								readBuffer.putInt(-10);
-								readBuffer.put((askingUser.concat(";")).getBytes(charset));
-								readBuffer.flip();
-								send(askedChannel, readBuffer.array());
-							} else {
-								//odpowiedz jesli dana rozmowa juz rozpoczeta
-								//System.out.println("Taka rozmowa istnieje");
-								readBuffer.putInt(-20);
-								readBuffer.put((userData[1].concat(";")).getBytes(charset));
-								readBuffer.flip();
-								//informacja zwrotna do klienta ktory wyslal zapytanie
-								send(clientRead, readBuffer.array());
-							}
-
-						}
-						break;
-
-					case C_REFUSE:
-						pair = new ConversationPair(clientRead,
-								  clientsChnnls.get(clientsIDs.indexOf(userData[1])));
-						//System.out.println("Odmowa konwersacji.\nLiczba oczekujacych rozmów przed kasowaniem: " + pendingPairs.size());
-
-						pendingPairs.remove(pair);
-						//System.out.println("Liczba rozmoów po kasowaniu: " + pendingPairs.size());
-
-						readBuffer.putInt(-30);
-						readBuffer.put((userData[2] + ";").getBytes(charset));
+				readBuffer.putInt(clientsIDs.size() + 1);
+				for (String str : clientsIDs) {
+					if (str.equalsIgnoreCase(clientId)) {
+						readBuffer.clear();
+						readBuffer.putInt(-1);
 						readBuffer.flip();
-						send(pair.client2, readBuffer.array());
-						break;
-
-					case C_ACCEPT:
-						if (!clientsIDs.contains(userData[1])) {
-							//System.out.println("^%$#%#^ Nie ma już takiego użytkownia");
-							return;
-						}
-						pair = new ConversationPair(clientRead,
-								  clientsChnnls.get(clientsIDs.indexOf(userData[1])));
-						//System.out.println("Rozmowa z " + userData[1] + "przyjeta");
-						pendingPairs.remove(pair);
-						activePairs.add(pair);
-						//System.out.println("Liczba aktywnych rozmów: " + activePairs.size());
-
-						if (handlerWorkers.size() < CONV_MAX) {
-
-							Integer createPort = listenPort + 1;
-							//System.out.println("Rozmiar handlers: " + handlersPorts.size());
-							for (Integer prt : handlersPorts) {
-								if (prt.equals(createPort))
-									createPort++;
-							}
-							//System.out.println("Numer portu: " + createPort);
-							handlersPorts.add(createPort);
-							//System.out.println("^ ^ ^ Main: Tworzenie nowego handlera na porcie " + createPort);
-
-							//System.out.println("Liczba handlerow: " + handlerWorkers.size());
-							HandleConversation worker = new HandleConversation(hostName, createPort, handlersEndData, pair);
-							handlerWorkers.add(worker);
-							handlersExecutor.execute(worker);
-
-							readBuffer.clear();
-							readBuffer.putInt(-40);
-							readBuffer.put((createPort + ";" + hostName + ";"
-								  + userData[1] + ";" + userData[2] + ";").getBytes(charset));
-							readBuffer.flip();
-							send(pair.client1, readBuffer.array());
-							send(pair.client2, readBuffer.array());
-
-						}
-						break;
-
-					case C_CONFIRM:
-						int port = Integer.parseInt(userData[2]);
-
-						for (HandleConversation obj : handlerWorkers) {
-							if (obj.getHandlerSocket() == port) {
-								if (obj.isWaiting()) {
-									//System.out.println("Potwierdzono połączenie na porcie " + port + ", uruchamiam handler");
-									obj.startHandler();
-								} else if (!obj.isRunning()) {
-
-									handlersPorts.remove(handlersPorts.indexOf(port));
-									handlerWorkers.remove(obj);
-								} /*else {
-								//System.out.println("Drugi client potwierdził, " + "handler już uruchomiony");
-								}*/
-							}
-						}
-
+						send(clientRead, readBuffer.array());
+						return;
+					}
+					readBuffer.put((str.concat(";")).getBytes(CHARSET));
 				}
+				readBuffer.put((clientId.concat(";")).getBytes(CHARSET));
 
+				clientsIDs.add(clientId);
+				clientsChnnls.add(clientRead);
+			}
+
+			//change client state from waiting for veryfication
+			//into enabling conversations
+			state.setState(ClientState.SERVECLIENT);
+			//update all connected clients with information
+			//about quantity and logins of active users
+			readBuffer.flip();
+			for (SocketChannel clnt : clientsChnnls) {
+				send(clnt, readBuffer.array());
+			}
+
+		} else if (state.getState() == ClientState.SERVECLIENT) {
+			//Veryfied client tries to create new conversation
+			ConversationPair pair;
+			String[] userData = (new String(readBuffer.array(), CHARSET)).split(";");
+
+			//userData[0] holds info about type of message (ask for, refuse, confirm conversation)
+			//userData[1] holds info about receiver of this request
+			switch (userData[0]) {
+				case C_ASK:
+					//
+					if (clientsIDs.contains(userData[1])) {
+						SocketChannel askedChannel = clientsChnnls.get(clientsIDs.indexOf(userData[1]));
+						String askingUser = clientsIDs.get(clientsChnnls.indexOf(clientRead));
+
+						ConversationPair convPair = new ConversationPair(clientRead, askedChannel);
+
+						readBuffer.clear();
+						if (!pendingPairs.contains(convPair) && !activePairs.contains(convPair)) {
+							//asked user available, no such conversation started
+							pendingPairs.add(convPair);
+							readBuffer.putInt(-10);
+							readBuffer.put((askingUser.concat(";")).getBytes(CHARSET));
+							readBuffer.flip();
+							//forward this request to asked client
+							send(askedChannel, readBuffer.array());
+						} else {
+							//conversation between this users has already started
+							readBuffer.putInt(-20);
+							readBuffer.put((userData[1].concat(";")).getBytes(CHARSET));
+							readBuffer.flip();
+							//send response about active conv
+							send(clientRead, readBuffer.array());
+						}
+					}
+					break;
+
+				case C_REFUSE:
+					//user refused, inform client sending request
+					pair = new ConversationPair(clientRead,
+							  clientsChnnls.get(clientsIDs.indexOf(userData[1])));
+
+					pendingPairs.remove(pair);
+					readBuffer.putInt(-30);
+					readBuffer.put((userData[2] + ";").getBytes(CHARSET));
+					readBuffer.flip();
+					send(pair.client2, readBuffer.array());
+					break;
+
+				case C_ACCEPT:
+					if (!clientsIDs.contains(userData[1])) {
+						//this client is no longer available
+						return;
+					}
+					pair = new ConversationPair(clientRead,
+							  clientsChnnls.get(clientsIDs.indexOf(userData[1])));
+					//conversation request accepted
+					pendingPairs.remove(pair);
+					activePairs.add(pair);
+
+					if (handlerWorkers.size() < CONV_MAX) {
+
+						//create new handler and send clients connection data
+						//if limit of conversations was not reached
+						Integer createPort = listenPort + 1;
+						if (!handlersPorts.isEmpty()) {
+							createPort = handlersPorts.get(handlersPorts.size() - 1) + 1;
+						}
+						handlersPorts.add(createPort);
+
+						HandleConversation worker = new HandleConversation(hostName, createPort, handlersEndData, pair);
+						handlerWorkers.add(worker);
+						handlersExecutor.execute(worker);
+
+						readBuffer.clear();
+						readBuffer.putInt(-40);
+						readBuffer.put((createPort + ";" + hostName + ";"
+							  + userData[1] + ";" + userData[2] + ";").getBytes(CHARSET));
+						readBuffer.flip();
+						send(pair.client1, readBuffer.array());
+						send(pair.client2, readBuffer.array());
+
+					}
+					break;
+
+				case C_CONFIRM:
+					int port = Integer.parseInt(userData[2]);
+
+					for (HandleConversation obj : handlerWorkers) {
+						if (obj.getHandlerSocket() == port) {
+							if (obj.isWaiting()) {
+								//System.out.println("Potwierdzono połączenie na porcie " + port + ", uruchamiam handler");
+								obj.startHandler();
+							} else if (!obj.isRunning()) {
+								handlersPorts.remove(handlersPorts.indexOf(port));
+								handlerWorkers.remove(obj);
+							} //else {
+							//System.out.println("Drugi client potwierdził, " + "handler już uruchomiony");
+							//}
+							break;
+						}
+					}
 			}
 		}
+
 	}
 
 	private void write(SelectionKey key) throws IOException {
 		SocketChannel clientSocket = (SocketChannel) key.channel();
-		//synchronized (pendingData) {
 		List<ByteBuffer> queue = pendingData.get(clientSocket);
 		ByteBuffer buffer;
 
@@ -398,8 +370,6 @@ public class ServerThread implements Runnable {
 			serverSocket.configureBlocking(false);
 			serverSocket.socket().bind(new InetSocketAddress(hostName, listenPort));
 			serverSocket.register(selector, SelectionKey.OP_ACCEPT);
-			//sKey = serverSocket.register(selector, SelectionKey.OP_ACCEPT);
-			//sKey.attach()
 
 			System.out.println("Starting listening on port " + listenPort);
 			//isRunning = true;
@@ -411,7 +381,6 @@ public class ServerThread implements Runnable {
 
 	private void closeSocket() {
 		try {
-			//executor.shutdown();
 			if (serverSocket.isOpen())
 				serverSocket.close();
 		} catch (IOException ioEx) {
@@ -434,7 +403,7 @@ public class ServerThread implements Runnable {
 		readBuffer.putInt(clientsIDs.size());
 		if (clientsIDs.size() > 0) {
 			for (String str : clientsIDs) {
-				readBuffer.put((str.concat(";")).getBytes(charset));
+				readBuffer.put((str.concat(";")).getBytes(CHARSET));
 			}
 		}
 
@@ -448,10 +417,10 @@ public class ServerThread implements Runnable {
 		}
 	}
 
-	public void stopServer() {
+	/*public void stopServer() {
 		System.out.println("Stopping server");
 		//isRunning = false;
-	}
+	}*/
 
 	@Override
 	public String toString() {
@@ -461,13 +430,12 @@ public class ServerThread implements Runnable {
 				  ", listenPort=" + listenPort +
 				  ", serverSocket=" + serverSocket +
 				  ", selector=" + selector +
-				  //", isRunning=" + isRunning +
 				  ", readBuffer=" + readBuffer +
 				  ", changeRequests=" + changeRequests +
 				  ", pendingData=" + pendingData +
 				  ", clientsState=" + clientsState +
 				  ", handlersExecutor=" + handlersExecutor +
-				  ", charset=" + charset +
+				  ", charset=" + CHARSET +
 				  ", appID='" + appID + '\'' +
 				  ", clientsIDs=" + clientsIDs +
 				  ", clientsChs=" + clientsChnnls +

@@ -26,7 +26,7 @@ public class ServerMain {
 			ioex.printStackTrace();
 		}
 
-		server.stopServer();
+		//server.stopServer();
 		task.interrupt();
 
 	}

@@ -1,6 +1,7 @@
 package piotr.messengerproject.client;
 
 import javax.swing.*;
+import javax.swing.border.Border;
 import javax.swing.event.*;
 import java.awt.*;
 import java.awt.event.*;
@@ -34,6 +35,7 @@ public class ClientGUI extends JFrame implements ActionListener, WindowListener 
 	private JList<Object> usersList;
 	private JPanel mainClient;
 	private JLabel ownerName;
+	private JPanel centerPanel;
 
 	private static final Color textAreaColor = new Color(84, 88, 90);
 	private static final Color textColor = new Color(242,242,242);
@@ -572,6 +574,70 @@ public class ClientGUI extends JFrame implements ActionListener, WindowListener 
 
 	}
 
+	private void createMainWindow() {
+		rootPanel = new JPanel();
+
+		//rootPanel.setLayout(getLayout());
+		//rootPanel.setBackground(new Color());
+		rootPanel.setLayout(new BorderLayout(0, 0));
+		rootPanel.setEnabled(true);
+		rootPanel.setOpaque(true);
+		rootPanel.setMinimumSize(new Dimension(-1, -1));
+		rootPanel.setPreferredSize(new Dimension(430, 300));
+		rootPanel.setRequestFocusEnabled(false);
+
+		rootPanel.add(buttonsMenuBar);
+
+		buttonsMenuBar = new JToolBar(SwingConstants.NORTH);
+		buttonsMenuBar.setBorder(BorderFactory.createEmptyBorder(1, 4, 1, 4));
+		buttonsMenuBar.setAutoscrolls(true);
+		buttonsMenuBar.setBackground(new Color(62,90, 49));
+		buttonsMenuBar.setBorderPainted(false);
+		buttonsMenuBar.setEnabled(false);
+		buttonsMenuBar.setFloatable(false);
+		buttonsMenuBar.setFocusable(false);
+		//buttonsMenuBar.setForeground();
+		buttonsMenuBar.setMargin(new Insets(2, 0, 0,0));
+		buttonsMenuBar.setOpaque(true);
+		buttonsMenuBar.setRequestFocusEnabled(false);
+		buttonsMenuBar.setRollover(false);
+
+		closeTab = new JButton();
+		closeTab.setActionCommand("Close");
+		closeTab.setAlignmentX(CENTER_ALIGNMENT);
+		closeTab.setAutoscrolls(false);
+		closeTab.setBorderPainted(true);
+		closeTab.setContentAreaFilled(false);
+		closeTab.setFocusPainted(true);
+		closeTab.setFocusable(false);
+		closeTab.setForeground(new Color(121,174,120));
+		closeTab.setHorizontalTextPosition(SwingConstants.CENTER);
+		closeTab.setIconTextGap(0);
+		closeTab.setMaximumSize(new Dimension(50, 25));
+		closeTab.setMinimumSize(new Dimension(38, 20));
+		closeTab.setPreferredSize(new Dimension(42,25));
+		closeTab.setOpaque(false);
+		closeTab.setRequestFocusEnabled(false);
+		closeTab.setRolloverEnabled(false);
+		closeTab.setSelected(false);
+		closeTab.setText("Close");
+		closeTab.setVerticalAlignment(SwingConstants.CENTER);
+		closeTab.setVerticalTextPosition(SwingConstants.CENTER);
+		buttonsMenuBar.add(closeTab);
+
+		centerPanel = new JPanel();
+		GridLayout layout = new GridLayout();
+		//layout.
+		centerPanel.setLayout(new BorderLayout());
+		centerPanel.setLayout(new GridLayout(1, 3, -1, -1));
+		Border border = BorderFactory.createLineBorder(new Color(0,74, 12));
+		centerPanel.setBorder(border);
+		//more code awaiting
+
+	}
+
+
+
 	//creating reader and writer for new conv
 	private boolean doConnect(String host, int port, String convUser) {
 
@@ -580,8 +646,18 @@ public class ClientGUI extends JFrame implements ActionListener, WindowListener 
 			convChannel.configureBlocking(false);
 			convChannel.connect(new InetSocketAddress(host, port));
 
-			if (!convChannel.finishConnect())
-				throw new IOException("Connection could not be finalized");
+			int time = 0;
+			while (!convChannel.finishConnect()) {
+				System.err.println("doConnect - finishConnect() pending");
+				try {
+					TimeUnit.MILLISECONDS.sleep(10);
+				} catch (InterruptedException itrEx) {
+					itrEx.printStackTrace();
+				}
+				if (++time > 10) {
+					throw new IOException("Connection could not be finalized");
+				}
+			}
 
 			readThreads.put(convUser, new ArrayBlockingQueue<>(BLOCKING_SIZE));
 			writeThreads.put(convUser, new ArrayBlockingQueue<>(BLOCKING_SIZE));

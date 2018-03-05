@@ -33,8 +33,6 @@ public class ClientState {
 	}
 
 	@Override
-	public int hashCode() {
-		return getState();
-	}
+	public int hashCode() { return getState(); }
 }
 
