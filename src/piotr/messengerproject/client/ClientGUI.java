@@ -1,7 +1,6 @@
 package piotr.messengerproject.client;
 
 import javax.swing.*;
-import javax.swing.border.Border;
 import javax.swing.event.*;
 import java.awt.*;
 import java.awt.event.*;
@@ -26,16 +25,17 @@ public class ClientGUI extends JFrame implements ActionListener, WindowListener 
 	private static final int BLOCKING_SIZE = 128;
 
 	private JPanel rootPanel;
+	private JPanel centerPanel;
+	private JPanel southPanel;
 	private JToolBar buttonsMenuBar;
 	private JButton closeTab;
-	private JLabel usersCount;
 	private JTabbedPane appPages;
+	private JList<Object> usersList;
 	private JTextField chooseUser;
 	private JButton sendRequest;
-	private JList<Object> usersList;
-	private JPanel mainClient;
 	private JLabel ownerName;
-	private JPanel centerPanel;
+	private JLabel usersCount;
+
 
 	private static final Color textAreaColor = new Color(84, 88, 90);
 	private static final Color textColor = new Color(242,242,242);
@@ -63,7 +63,7 @@ public class ClientGUI extends JFrame implements ActionListener, WindowListener 
 	private void initComponents() {
 		setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE);
 
-		SwingUtilities.updateComponentTreeUI(this);
+		SwingUtilities.updateComponentTreeUI(rootPanel);
 
 		setMinimumSize(new Dimension(290, 500));
 		setPreferredSize(new Dimension(300, 500));
@@ -188,11 +188,7 @@ public class ClientGUI extends JFrame implements ActionListener, WindowListener 
 				while (!channel.finishConnect()) {
 					if (timeOut++ > 100)
 						return;
-					try {
-						TimeUnit.MILLISECONDS.sleep(100);
-					} catch (InterruptedException itrEx) {
-						itrEx.printStackTrace();
-					}
+					TimeUnit.MILLISECONDS.sleep(100);
 				}
 
 				buffer = ByteBuffer.allocate(BUFFER_SIZE);
@@ -243,7 +239,7 @@ public class ClientGUI extends JFrame implements ActionListener, WindowListener 
 				boolean clientsUpdate = true;
 				boolean awaitingConv = false;
 				boolean sendOK;
-				int bytesRead;
+				int bytesRead = 0;
 				String[] inputArray;
 				String input;
 				String usersData;
@@ -255,7 +251,7 @@ public class ClientGUI extends JFrame implements ActionListener, WindowListener 
 				channel.configureBlocking(false);
 
 				buffer.compact();
-				while (true) {
+				while (bytesRead != -1) {
 
 					if (clientsUpdate) {
 						//print active users
@@ -289,11 +285,6 @@ public class ClientGUI extends JFrame implements ActionListener, WindowListener 
 
 					buffer.clear();
 					bytesRead = channel.read(buffer);
-					if (bytesRead == -1) {
-						System.out.println("STOP. Server closed the connection");
-						break;
-					}
-
 					if (bytesRead != 0) {
 						buffer.flip();
 						response = buffer.getInt();
@@ -394,6 +385,7 @@ public class ClientGUI extends JFrame implements ActionListener, WindowListener 
 								buffer.put(("a;" + inputArray[1] + ";").getBytes(CHARSET));
 							}
 						}
+						//send buffer data when flag is true
 						if (sendOK) {
 							buffer.flip();
 							channel.write(buffer);
@@ -442,16 +434,16 @@ public class ClientGUI extends JFrame implements ActionListener, WindowListener 
 					}
 
 					buffer.clear();
-					try {
-						TimeUnit.MILLISECONDS.sleep(24);
-					} catch (InterruptedException itrEx) {
-						itrEx.printStackTrace();
-					}
+					TimeUnit.MILLISECONDS.sleep(32);
+
 				}
 
 			} catch (IOException ioEx) {
 				System.err.println("Connection problem.");
 				System.err.println(ioEx.getMessage());
+			} catch (InterruptedException itrEx) {
+				System.err.println("Main thread interrupted:");
+				System.err.println(itrEx.getMessage());
 			}
 			performSafeClose();
 		}
@@ -573,70 +565,6 @@ public class ClientGUI extends JFrame implements ActionListener, WindowListener 
 			}
 
 	}
-
-	private void createMainWindow() {
-		rootPanel = new JPanel();
-
-		//rootPanel.setLayout(getLayout());
-		//rootPanel.setBackground(new Color());
-		rootPanel.setLayout(new BorderLayout(0, 0));
-		rootPanel.setEnabled(true);
-		rootPanel.setOpaque(true);
-		rootPanel.setMinimumSize(new Dimension(-1, -1));
-		rootPanel.setPreferredSize(new Dimension(430, 300));
-		rootPanel.setRequestFocusEnabled(false);
-
-		rootPanel.add(buttonsMenuBar);
-
-		buttonsMenuBar = new JToolBar(SwingConstants.NORTH);
-		buttonsMenuBar.setBorder(BorderFactory.createEmptyBorder(1, 4, 1, 4));
-		buttonsMenuBar.setAutoscrolls(true);
-		buttonsMenuBar.setBackground(new Color(62,90, 49));
-		buttonsMenuBar.setBorderPainted(false);
-		buttonsMenuBar.setEnabled(false);
-		buttonsMenuBar.setFloatable(false);
-		buttonsMenuBar.setFocusable(false);
-		//buttonsMenuBar.setForeground();
-		buttonsMenuBar.setMargin(new Insets(2, 0, 0,0));
-		buttonsMenuBar.setOpaque(true);
-		buttonsMenuBar.setRequestFocusEnabled(false);
-		buttonsMenuBar.setRollover(false);
-
-		closeTab = new JButton();
-		closeTab.setActionCommand("Close");
-		closeTab.setAlignmentX(CENTER_ALIGNMENT);
-		closeTab.setAutoscrolls(false);
-		closeTab.setBorderPainted(true);
-		closeTab.setContentAreaFilled(false);
-		closeTab.setFocusPainted(true);
-		closeTab.setFocusable(false);
-		closeTab.setForeground(new Color(121,174,120));
-		closeTab.setHorizontalTextPosition(SwingConstants.CENTER);
-		closeTab.setIconTextGap(0);
-		closeTab.setMaximumSize(new Dimension(50, 25));
-		closeTab.setMinimumSize(new Dimension(38, 20));
-		closeTab.setPreferredSize(new Dimension(42,25));
-		closeTab.setOpaque(false);
-		closeTab.setRequestFocusEnabled(false);
-		closeTab.setRolloverEnabled(false);
-		closeTab.setSelected(false);
-		closeTab.setText("Close");
-		closeTab.setVerticalAlignment(SwingConstants.CENTER);
-		closeTab.setVerticalTextPosition(SwingConstants.CENTER);
-		buttonsMenuBar.add(closeTab);
-
-		centerPanel = new JPanel();
-		GridLayout layout = new GridLayout();
-		//layout.
-		centerPanel.setLayout(new BorderLayout());
-		centerPanel.setLayout(new GridLayout(1, 3, -1, -1));
-		Border border = BorderFactory.createLineBorder(new Color(0,74, 12));
-		centerPanel.setBorder(border);
-		//more code awaiting
-
-	}
-
-
 
 	//creating reader and writer for new conv
 	private boolean doConnect(String host, int port, String convUser) {

@@ -313,13 +313,13 @@ public class ServerThread implements Runnable {
 					for (HandleConversation obj : handlerWorkers) {
 						if (obj.getHandlerSocket() == port) {
 							if (obj.isWaiting()) {
-								//System.out.println("Potwierdzono połączenie na porcie " + port + ", uruchamiam handler");
+								//System.out.println("Connection on port '" + port + "' confirmed, starting handler");
 								obj.startHandler();
 							} else if (!obj.isRunning()) {
 								handlersPorts.remove(handlersPorts.indexOf(port));
 								handlerWorkers.remove(obj);
 							} //else {
-							//System.out.println("Drugi client potwierdził, " + "handler już uruchomiony");
+							//System.out.println("Second client confirmed, handler is up and running");
 							//}
 							break;
 						}
