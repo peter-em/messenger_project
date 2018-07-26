@@ -1,5 +1,4 @@
-package piotr.messengerproject.server;
-
+package piotr.messenger.server;
 
 public class ConversationEnd {
 	public int portNr;

@@ -1,4 +1,4 @@
-package piotr.messengerproject.client;
+package piotr.messenger.client;
 
 import javax.swing.*;
 import javax.swing.event.*;

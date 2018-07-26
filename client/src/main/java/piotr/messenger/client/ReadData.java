@@ -1,4 +1,4 @@
-package piotr.messengerproject.client;
+package piotr.messenger.client;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;

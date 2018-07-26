@@ -1,4 +1,4 @@
-package piotr.messengerproject.server;
+package piotr.messenger.server;
 
 import java.nio.channels.SocketChannel;
 

@@ -1,4 +1,4 @@
-package piotr.messengerproject.server;
+package piotr.messenger.server;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -13,6 +13,9 @@ import java.util.*;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 
 public class ServerThread implements Runnable {
@@ -68,6 +71,7 @@ public class ServerThread implements Runnable {
 	@Override
 	public void run() {
 
+	    Logger logger = LoggerFactory.getLogger(ServerThread.class);
 		while (!Thread.interrupted()) {
 			try {
 
@@ -123,6 +127,7 @@ public class ServerThread implements Runnable {
 		}
 
 		System.out.println("Closing server");
+		logger.info("Closing server");
 		closeSocket();
 		handlersExecutor.shutdown();
 	}
