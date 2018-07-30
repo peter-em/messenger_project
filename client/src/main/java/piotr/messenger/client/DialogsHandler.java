@@ -7,9 +7,9 @@ import javax.swing.*;
 * */
 
 public class DialogsHandler implements Runnable{
-	public static final int CONV_STARTED = 1;
-	public static final int CONV_REQUEST = 2;
-	public static final int CONV_REFUSED = 3;
+	static final int CONV_STARTED = 1;
+	static final int CONV_REQUEST = 2;
+	static final int CONV_REFUSED = 3;
 	private String convUser;
 	private int dialogType;
 	private JPanel rootPanel;

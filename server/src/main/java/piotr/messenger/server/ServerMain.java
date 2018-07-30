@@ -1,7 +1,5 @@
 package piotr.messenger.server;
 
-import java.io.*;
-
 
 public class ServerMain {
 
@@ -12,22 +10,8 @@ public class ServerMain {
 
 		ServerThread server = new ServerThread(hostName, portNr);
 		Thread task = new Thread(server);
+		task.setName("MainThread");
 		task.start();
-
-		BufferedReader stdIn = new BufferedReader(new InputStreamReader(System.in));
-		try {
-			String input;
-			while ((input = stdIn.readLine()) != null) {
-				System.err.println(input);
-				if (input.equalsIgnoreCase("s"))
-					break;
-			}
-		} catch (IOException ioex) {
-			ioex.printStackTrace();
-		}
-
-		//server.stopServer();
-		task.interrupt();
 
 	}
 

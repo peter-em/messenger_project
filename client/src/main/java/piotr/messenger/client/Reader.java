@@ -7,20 +7,20 @@ import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
 /*
- * class used to read data in conversation from server
+ * class used to read conversation data from the server
  * */
 
-public class ReadData implements Runnable {
+public class Reader implements Runnable {
 
 	private ByteBuffer buffer;
 	private SocketChannel channel;
 	private volatile boolean isRunning;
+	private Writer writer;
 	private ArrayBlockingQueue<String> sendDataQueue;
-	private WriteData writer;
 
-	ReadData(SocketChannel channel, ArrayBlockingQueue<String> queue) {
+	Reader(SocketChannel channel, ArrayBlockingQueue<String> queue) {
 		this.channel = channel;
-		buffer = ByteBuffer.allocate(ClientGUI.BUFFER_SIZE*2);
+		buffer = ByteBuffer.allocate(Constants.BUFFER_SIZE*2);
 		sendDataQueue = queue;
 	}
 
@@ -53,7 +53,7 @@ public class ReadData implements Runnable {
 					data = new byte[count];
 					System.arraycopy(buffer.array(), 0, data, 0, count);
 
-					receive = new String(data, ClientGUI.CHARSET);
+					receive = new String(data, Constants.CHARSET);
 
 					try {
 						sendDataQueue.put(receive);
@@ -86,15 +86,15 @@ public class ReadData implements Runnable {
 		}
 	}
 
-	public void setWriter(WriteData writer) {
+	void setWriter(Writer writer) {
 		this.writer = writer;
 	}
 
-	public void stopWorker() {
+	void stopWorker() {
 		isRunning = false;
 	}
 
-	public boolean isRunning() {
+	boolean isRunning() {
 		return isRunning;
 	}
 }

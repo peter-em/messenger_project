@@ -16,12 +16,14 @@ import java.util.concurrent.Executors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import ch.qos.logback.classic.LoggerContext;
+import ch.qos.logback.core.util.StatusPrinter;
 
 
 public class ServerThread implements Runnable {
 
 	private static final int CONV_MAX = 40;
-	protected static final int BUFF_SIZE = 1024;
+	static final int BUFF_SIZE = 1024;
 	private static final String C_ASK = "a";
 	private static final String C_REFUSE = "n";
 	private static final String C_ACCEPT = "y";
@@ -48,6 +50,8 @@ public class ServerThread implements Runnable {
 	private List<Integer> handlersPorts;
 	private ArrayBlockingQueue<ConversationEnd> handlersEndData;
 
+	private final Logger logger;
+
 
 	ServerThread(String hostName, int listenPort) {
 		System.setProperty("sun.net.useExclusiveBind", "false");
@@ -64,14 +68,20 @@ public class ServerThread implements Runnable {
 		handlerWorkers = new ArrayList<>();	//or maybe LinkedList<> should be used
 		handlersPorts = new LinkedList<>();	//or maybe LinkedList<> should be used
 		handlersEndData = new ArrayBlockingQueue<>(CONV_MAX*2);
-		openSocket();
+        logger = LoggerFactory.getLogger(ServerThread.class);
+
 		handlersExecutor = Executors.newFixedThreadPool(CONV_MAX);
 	}
 
 	@Override
 	public void run() {
 
-	    Logger logger = LoggerFactory.getLogger(ServerThread.class);
+        LoggerContext lc = (LoggerContext)LoggerFactory.getILoggerFactory();
+        StatusPrinter.print(lc);
+        openSocket();
+
+
+
 		while (!Thread.interrupted()) {
 			try {
 
@@ -85,16 +95,10 @@ public class ServerThread implements Runnable {
 
 				//clear leftovers from terminated conversation handler
 				while (!handlersEndData.isEmpty()) {
-					ConversationEnd data;
-					try {
-						data = handlersEndData.take();
-						handlersPorts.remove(handlersPorts.indexOf(data.portNr));
-						activePairs.remove(data.convPair);
-						handlerWorkers.remove(data.worker);
-					} catch (InterruptedException bqEx) {
-						System.err.println("Problem occured while reading ArrayBlockingQueue");
-						System.err.println(bqEx.getMessage());
-					}
+                    ConversationEnd data = handlersEndData.take();
+                    handlersPorts.remove(new Integer(data.portNr));
+                    activePairs.remove(data.convPair);
+                    handlerWorkers.remove(data.worker);
 				}
 
 				//iterating through set of keys which have available events
@@ -109,7 +113,7 @@ public class ServerThread implements Runnable {
 
 					//check for available event and handle it
 					if (!key.isValid()) {
-						System.err.println("Invalid key");
+                        logger.error("INVALID KEY");
 					} else if (key.isAcceptable()) {
 						accept(key);
 					} else if (key.isReadable()) {
@@ -120,14 +124,16 @@ public class ServerThread implements Runnable {
 				}
 
 			} catch (IOException ioEx) {
-				System.err.println("Problem occured while listenint for events");
-				System.out.println(ioEx.getMessage());
+                logger.error("Problem occured while listening for events - "
+                        + ioEx.getMessage());
 				//isRunning = false;
-			}
+			} catch (InterruptedException abqEx) {
+                logger.error("ArrayBlockingQueue error - " + abqEx.getMessage());
+            }
 		}
 
-		System.out.println("Closing server");
 		logger.info("Closing server");
+
 		closeSocket();
 		handlersExecutor.shutdown();
 	}
@@ -140,7 +146,7 @@ public class ServerThread implements Runnable {
 		newClient.configureBlocking(false);
 		//register new client with selector, prepared for reading incoming data
 		newClient.register(selector, SelectionKey.OP_READ);
-		//System.out.println("Client accepted, waiting for data");
+//        logger.debug("Client accepted, waiting for data");
 		clientsState.put(newClient, new ClientState());
 	}
 
@@ -157,8 +163,8 @@ public class ServerThread implements Runnable {
 		} catch (IOException ioEx) {
 			//exception caused by client disconnecting 'unproperly'
 			//cancel 'SelectionKey key' and close corresponding channel
-			System.err.println("SERVER: Exception raised while reading data. Closing client connection");
-			System.err.println(ioEx.getMessage());
+            logger.error("Exception raised while reading data. Closing client connection - "
+                    + ioEx.getMessage());
 			bytesRead = -1;
 		}
 
@@ -318,13 +324,13 @@ public class ServerThread implements Runnable {
 					for (HandleConversation obj : handlerWorkers) {
 						if (obj.getHandlerSocket() == port) {
 							if (obj.isWaiting()) {
-								//System.out.println("Connection on port '" + port + "' confirmed, starting handler");
+                                //logger.debug("Connection on port '{}' confirmed, starting handler", port);
 								obj.startHandler();
 							} else if (!obj.isRunning()) {
-								handlersPorts.remove(handlersPorts.indexOf(port));
+                                handlersPorts.remove(new Integer(port));
 								handlerWorkers.remove(obj);
 							} //else {
-							//System.out.println("Second client confirmed, handler is up and running");
+                            //logger.debug("Second client confirmed, handler is up and running");
 							//}
 							break;
 						}
@@ -345,7 +351,7 @@ public class ServerThread implements Runnable {
 			clientSocket.write(buffer);
 
 			if (buffer.remaining() > 0) {
-				System.err.println("!!!! buffer was not fully emptied !!!!");
+                logger.error("!!! buffer was not fully emptied !!!");
 				break;
 			}
 			queue.remove(0);
@@ -376,11 +382,12 @@ public class ServerThread implements Runnable {
 			serverSocket.socket().bind(new InetSocketAddress(hostName, listenPort));
 			serverSocket.register(selector, SelectionKey.OP_ACCEPT);
 
-			System.out.println("Starting listening on port " + listenPort);
+            logger.info("Starting listening on port {}.", listenPort);
 			//isRunning = true;
 		} catch (IOException ioEx) {
-			System.out.println("Problem occured while opening listening port");
-			System.out.println(ioEx.getMessage());
+            logger.error("Problem occured while opening listening port - (reason) "
+                    + ioEx.getMessage());
+            Thread.currentThread().interrupt();
 		}
 	}
 
@@ -389,8 +396,8 @@ public class ServerThread implements Runnable {
 			if (serverSocket.isOpen())
 				serverSocket.close();
 		} catch (IOException ioEx) {
-			System.out.println("Problem occured while closing server socket");
-			System.out.println(ioEx.getMessage());
+            logger.error("Problem occured while closing server socket - "
+                    + ioEx.getMessage());
 		}
 	}
 
