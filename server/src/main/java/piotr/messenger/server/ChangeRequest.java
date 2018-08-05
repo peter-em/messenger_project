@@ -9,12 +9,12 @@ public class ChangeRequest {
 
 	public SocketChannel socket;
 	public int type;
-	public int ops;
+//	public int ops;
 
-	ChangeRequest(SocketChannel socket, int type, int ops) {
+	ChangeRequest(SocketChannel socket, int type) {
 		this.socket = socket;
 		this.type = type;
-		this.ops = ops;
+//		this.ops = ops;
 	}
 
 	@Override
@@ -22,7 +22,7 @@ public class ChangeRequest {
 		return "ChangeRequest{" +
 				  "socket=" + socket +
 				  ", type=" + type +
-				  ", ops=" + ops +
+//				  ", ops=" + ops +
 				  '}';
 	}
 }

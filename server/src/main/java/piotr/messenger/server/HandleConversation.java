@@ -12,6 +12,10 @@ import java.util.*;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+
 public class HandleConversation implements Runnable {
 
 	private ServerSocketChannel handler;
@@ -25,19 +29,23 @@ public class HandleConversation implements Runnable {
 	private volatile boolean isRunning;
 	private volatile boolean isWaiting;
 	private List<ChangeRequest> changeRequests;
-	private Map<SocketChannel, List<ByteBuffer>> pendingData;
+//	private Map<SocketChannel, List<ByteBuffer>> pendingData;
+    private Map<SocketChannel, ByteBuffer> pendingData;
 	private ArrayBlockingQueue<ConversationEnd> handlersEndData;
 	private ConversationPair convPair;
+	private final Logger logger;
 
 	HandleConversation(String handlerAddress, int handlerPort,
 									  ArrayBlockingQueue<ConversationEnd> queue, ConversationPair pair) {
+
+        logger = LoggerFactory.getLogger(HandleConversation.class);
 		changeRequests = new LinkedList<>();
 		pendingData = new HashMap<>();
 		this.handlerAddress = handlerAddress;
 		this.handlerPort = handlerPort;
 		handlersEndData = queue;
 		convPair = pair;
-		readBuffer = ByteBuffer.allocate(ServerThread.BUFF_SIZE*2);
+		readBuffer = ByteBuffer.allocate(Constants.BUFF_SIZE*2);
 		clientCount = 0;
 		isRunning = false;
 		isWaiting = true;
@@ -72,7 +80,8 @@ public class HandleConversation implements Runnable {
 					switch (changeRequest.type) {
 						case ChangeRequest.CHANGEOPS:
 							SelectionKey swKey = changeRequest.socket.keyFor(talkSelector);
-							swKey.interestOps(changeRequest.ops);
+//							swKey.interestOps(changeRequest.ops);
+                            swKey.interestOps(SelectionKey.OP_WRITE);
 					}
 				}
 				changeRequests.clear();
@@ -95,13 +104,13 @@ public class HandleConversation implements Runnable {
 				}
 
 			} catch (IOException ioEx) {
-				System.err.println("Problem occured while listenint for events");
-				System.out.println(ioEx.getMessage());
+                logger.error("Problem occured while listening for events - "
+                        + ioEx.getMessage());
 				isRunning = false;
 			}
 		}
 
-		//System.out.println("Closing conversation handler");
+        logger.info("Closing conversation handler on port {}.", handlerPort);
 		closeSocket();
 		handlersEndData.add(new ConversationEnd(handlerPort, convPair, this));
 	}
@@ -126,7 +135,7 @@ public class HandleConversation implements Runnable {
 		} else {
 			SocketChannel cancelCh = serverSocketChannel.accept();
 			cancelCh.close();
-			System.err.println("Client rejected, doesn't belong to this conversation");
+            logger.info("Client rejected, doesn't belong to this conversation");
 		}
 	}
 
@@ -140,8 +149,7 @@ public class HandleConversation implements Runnable {
 		} catch (IOException ioEx) {
 			//exception caused by client breaking connection
 			//cancel selection key, close channel
-			System.err.println("Error occurred while reading data. Closing channel");
-			System.err.println(ioEx.getMessage());
+            logger.error("Reading data error. Closing channel ({}).", ioEx.getMessage());
 			key.cancel();
 			if (client1.isOpen())
 				client1.close();
@@ -170,37 +178,39 @@ public class HandleConversation implements Runnable {
 			System.arraycopy(readBuffer.array(), 0, copyData, 0, bytesRead);
 			send(clientRead, copyData);
 		} else
-			System.err.println("!!!! Client send 0 bytes"); //this should not happen
+			//this should not happen
+            logger.error("Client send 0 bytes!");
 	}
 
 	private void write(SelectionKey key) throws IOException {
 		SocketChannel clientSocket = (SocketChannel) key.channel();
-		List queue = pendingData.get(clientSocket);
+//		List queue = pendingData.get(clientSocket);
 
-		ByteBuffer buffer;
-		while (!queue.isEmpty()) {
-			buffer = (ByteBuffer) queue.get(0);
+//		ByteBuffer buffer;
+        ByteBuffer buffer = pendingData.get(clientSocket);
+//		while (!queue.isEmpty()) {
+//			buffer = (ByteBuffer) queue.get(0);
 			clientSocket.write(buffer);
 			if (buffer.remaining() > 0) {
-				System.err.println("!!!! Buffer was not emptied");
-				break;
+                logger.error("Buffer was not emptied!");
+//				break;
 			}
-			queue.remove(0);
-		}
+//			queue.remove(0);
+//		}
 
-		if (queue.isEmpty())
+//		if (queue.isEmpty())
 			key.interestOps(SelectionKey.OP_READ);
 	}
 
 	private void send(SocketChannel client, byte[] data) {
 
-		changeRequests.add(new ChangeRequest(client, ChangeRequest.CHANGEOPS, SelectionKey.OP_WRITE));
+		changeRequests.add(new ChangeRequest(client, ChangeRequest.CHANGEOPS));//, SelectionKey.OP_WRITE));
 
 		//pendingData.computeIfAbsent(client, value -> new ArrayList<>());
 		//List<ByteBuffer> queue = pendingData.get(client);
 		//queue.add(ByteBuffer.wrap(data));
-		pendingData.computeIfAbsent(client, value -> new ArrayList<>()).add
-				  (ByteBuffer.wrap(data));
+//		pendingData.computeIfAbsent(client, value -> new ArrayList<>()).add(ByteBuffer.wrap(data));
+        pendingData.put(client, ByteBuffer.wrap(data));
 	}
 
 	private void openSocket() {
@@ -214,8 +224,9 @@ public class HandleConversation implements Runnable {
 
 			isRunning = true;
 		} catch (IOException ioEx) {
-			System.err.println("Problem occured while opening handler port");
-			System.err.println(ioEx.getMessage());
+//			System.err.println("Problem occured while opening handler port");
+//			System.err.println(ioEx.getMessage());
+
 		}
 	}
 

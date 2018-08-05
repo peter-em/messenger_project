@@ -5,8 +5,8 @@ import java.nio.channels.SocketChannel;
 
 public class ConversationPair {
 
-	public SocketChannel client1;
-	public SocketChannel client2;
+	SocketChannel client1;
+	SocketChannel client2;
 
 	ConversationPair(SocketChannel client1, SocketChannel client2) {
 		this.client1 = client1;

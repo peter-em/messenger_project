@@ -3,12 +3,8 @@ package piotr.messenger.server;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
-import java.nio.channels.SelectionKey;
-import java.nio.channels.Selector;
-import java.nio.channels.ServerSocketChannel;
-import java.nio.channels.SocketChannel;
+import java.nio.channels.*;
 import java.nio.channels.spi.SelectorProvider;
-import java.nio.charset.Charset;
 import java.util.*;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ExecutorService;
@@ -22,14 +18,6 @@ import ch.qos.logback.core.util.StatusPrinter;
 
 public class ServerThread implements Runnable {
 
-	private static final int CONV_MAX = 40;
-	static final int BUFF_SIZE = 1024;
-	private static final String C_ASK = "a";
-	private static final String C_REFUSE = "n";
-	private static final String C_ACCEPT = "y";
-	private static final String C_CONFIRM = "c";
-	private static final Charset CHARSET = Charset.forName("UTF-8");
-	private static final String appID = "MessageServerClient";
 
 	private String hostName;
 	private int listenPort;
@@ -39,11 +27,11 @@ public class ServerThread implements Runnable {
 	private ByteBuffer readBuffer;
 	private List<ChangeRequest> changeRequests;
 	//mapowanie socketChannel clienta do listy instancji ByteBufforow
-	private Map<SocketChannel, List<ByteBuffer>> pendingData;
+//	private Map<SocketChannel, List<ByteBuffer>> pendingData;
+    private Map<SocketChannel, ByteBuffer> pendingData;
 	private Map<SocketChannel, ClientState> clientsState;
 	private ExecutorService handlersExecutor;
-	private ArrayList<String> clientsIDs;
-	private ArrayList<SocketChannel> clientsChnnls;
+    private Clients clients;
 	private List<ConversationPair> pendingPairs;
 	private List<ConversationPair> activePairs;
 	private List<HandleConversation> handlerWorkers;
@@ -53,24 +41,23 @@ public class ServerThread implements Runnable {
 	private final Logger logger;
 
 
-	ServerThread(String hostName, int listenPort) {
+	ServerThread() {
 		System.setProperty("sun.net.useExclusiveBind", "false");
-		this.hostName = hostName;
-		this.listenPort = listenPort;
-		readBuffer = ByteBuffer.allocate(BUFF_SIZE);
+		this.hostName = Constants.HOST_NAME;
+		this.listenPort = Constants.PORT;
+		readBuffer = ByteBuffer.allocate(Constants.BUFF_SIZE);
 		changeRequests = new LinkedList<>();//or maybe ArrayList<> should be used
 		pendingData = new HashMap<>();
 		clientsState = new HashMap<>();
-		clientsIDs = new ArrayList<>();
-		clientsChnnls = new ArrayList<>();
+        clients = new Clients();
 		pendingPairs = new ArrayList<>(); 	//or maybe LinkedList<> should be used
 		activePairs = new ArrayList<>();		//or maybe LinkedList<> should be used
 		handlerWorkers = new ArrayList<>();	//or maybe LinkedList<> should be used
-		handlersPorts = new LinkedList<>();	//or maybe LinkedList<> should be used
-		handlersEndData = new ArrayBlockingQueue<>(CONV_MAX*2);
+		handlersPorts = new LinkedList<>();	//or maybe ArrayList<> should be used
+		handlersEndData = new ArrayBlockingQueue<>(Constants.CONV_MAX*2);
         logger = LoggerFactory.getLogger(ServerThread.class);
 
-		handlersExecutor = Executors.newFixedThreadPool(CONV_MAX);
+		handlersExecutor = Executors.newFixedThreadPool(Constants.CONV_MAX);
 	}
 
 	@Override
@@ -85,12 +72,15 @@ public class ServerThread implements Runnable {
 		while (!Thread.interrupted()) {
 			try {
 
+//			    int counter = 0;
 				for (ChangeRequest change : changeRequests) {
-					//if (change.type == ChangeRequest.CHANGEOPS) {
-						SelectionKey selectionKey = change.socket.keyFor(selector);
-						selectionKey.interestOps(change.ops);
-					//}
+                    SelectionKey selectionKey = change.socket.keyFor(selector);
+//                    logger.debug("change.ops: {}", change.ops);
+//                    logger.debug("KEY: {}", selectionKey.toString());
+                    selectionKey.interestOps(SelectionKey.OP_WRITE);
+//                    counter++;
 				}
+//				logger.debug("RUN counter: {}", counter);
 				changeRequests.clear();
 
 				//clear leftovers from terminated conversation handler
@@ -115,8 +105,10 @@ public class ServerThread implements Runnable {
 					if (!key.isValid()) {
                         logger.error("INVALID KEY");
 					} else if (key.isAcceptable()) {
+//						logger.debug("new client");
 						accept(key);
 					} else if (key.isReadable()) {
+//						logger.debug("reading from client");
 						read(key);
 					} else if (key.isWritable()) {
 						write(key);
@@ -129,11 +121,14 @@ public class ServerThread implements Runnable {
 				//isRunning = false;
 			} catch (InterruptedException abqEx) {
                 logger.error("ArrayBlockingQueue error - " + abqEx.getMessage());
+            } catch (CancelledKeyException cancelled) {
+			    logger.error("Cancelled ({}).", cancelled.getMessage());
+			    cancelled.printStackTrace();
+			    break;
             }
 		}
 
 		logger.info("Closing server");
-
 		closeSocket();
 		handlersExecutor.shutdown();
 	}
@@ -156,35 +151,38 @@ public class ServerThread implements Runnable {
 
 		//clear read buffer before accepting incoming data
 		readBuffer.clear();
-		int bytesRead;
+		int bytesRead = -1;
 		//try to read from client's channel
 		try {
 			bytesRead = clientRead.read(readBuffer);
 		} catch (IOException ioEx) {
 			//exception caused by client disconnecting 'unproperly'
 			//cancel 'SelectionKey key' and close corresponding channel
-            logger.error("Exception raised while reading data. Closing client connection - "
-                    + ioEx.getMessage());
-			bytesRead = -1;
+            logger.info("Unexpected end of connection ({}).", ioEx.getMessage());
 		}
 
 		if (bytesRead <= 0) {
 			//client ended connection clearly, server closes corresponding channel
 			if (state.getState() > ClientState.WAITFORUID) {
+//				logger.debug("dropRegisteredClient");
 				dropRegisteredClient(clientRead);
 			}
 			clientsState.remove(clientRead);
 			key.cancel();
 			clientRead.close();
+			logger.debug("client dropping");
+			return;
 		}
 
+//		logger.debug("reading proceeds");
 		readBuffer.flip();
 		if (state.getState() == ClientState.WERIFYAPP) {
+//		    logger.debug("app verification");
 		//perform app veryfication
-			byte[] dataCopy = new byte[appID.length()];
-			System.arraycopy(readBuffer.array(), 0, dataCopy, 0, appID.length());
+			byte[] dataCopy = new byte[Constants.APP_ID.length()];
+			System.arraycopy(readBuffer.array(), 0, dataCopy, 0, Constants.APP_ID.length());
 
-			if (!checkClientID(new String(dataCopy, CHARSET))) {
+			if (!checkClientID(new String(dataCopy, Constants.CHARSET))) {
 				//client hasnt provided proper ID
 				//(invalid app) --> dumping connection
 				clientRead.close();
@@ -195,58 +193,59 @@ public class ServerThread implements Runnable {
 				state.setState(ClientState.WAITFORUID);
 			}
 		} else if (state.getState() == ClientState.WAITFORUID) {
-			String clientData = new String(readBuffer.array(), CHARSET);
+//		    logger.debug("client verification");
+			String clientData = new String(readBuffer.array(), Constants.CHARSET);
 			String clientId = clientData.split(";")[0];
 
 			//veryfication successful, returning list of connected clients
 			//or -1 if provided login is already in use
+
+            // this if statement below prob requires some refactoring !!
 			readBuffer.clear();
-			if (clientsIDs.isEmpty()) {
-				readBuffer.putInt(1);
-				clientsIDs.add(clientId);
-				clientsChnnls.add(clientRead);
-			} else {
 
-				readBuffer.putInt(clientsIDs.size() + 1);
-				for (String str : clientsIDs) {
-					if (str.equalsIgnoreCase(clientId)) {
-						readBuffer.clear();
-						readBuffer.putInt(-1);
-						readBuffer.flip();
-						send(clientRead, readBuffer.array());
-						return;
-					}
-					readBuffer.put((str.concat(";")).getBytes(CHARSET));
-				}
-				readBuffer.put((clientId.concat(";")).getBytes(CHARSET));
+			if (clients.hasUser(clientId)) {
+			    readBuffer.putInt(-1);
+			    readBuffer.flip();
+			    send(clientRead, readBuffer.array());
+            } else {
+			    clients.addUser(clientId, clientRead);
+			    StringBuilder usersList = new StringBuilder();
+			    for (String str : clients.getUsers()) {
+			        usersList.append(str);
+			        usersList.append(';');
+                }
+                readBuffer.putInt(clients.usersCount());
+                readBuffer.put(usersList.toString().getBytes(Constants.CHARSET));
+                //change client state from waiting for veryfication
+                //into enabling conversations
+                state.setState(ClientState.SERVECLIENT);
+                //update all connected clients with information
+                //about quantity and logins of active users
+                readBuffer.flip();
+//			int counter = 0;
+                for (SocketChannel clnt : clients.getChannels()) {
+//			    counter++;
+                    send(clnt, readBuffer.array());
+                }
+//			logger.debug("COUNTER: {}", counter);
+            }
 
-				clientsIDs.add(clientId);
-				clientsChnnls.add(clientRead);
-			}
 
-			//change client state from waiting for veryfication
-			//into enabling conversations
-			state.setState(ClientState.SERVECLIENT);
-			//update all connected clients with information
-			//about quantity and logins of active users
-			readBuffer.flip();
-			for (SocketChannel clnt : clientsChnnls) {
-				send(clnt, readBuffer.array());
-			}
 
 		} else if (state.getState() == ClientState.SERVECLIENT) {
 			//Veryfied client tries to create new conversation
 			ConversationPair pair;
-			String[] userData = (new String(readBuffer.array(), CHARSET)).split(";");
+			String[] userData = (new String(readBuffer.array(), Constants.CHARSET)).split(";");
 
 			//userData[0] holds info about type of message (ask for, refuse, confirm conversation)
 			//userData[1] holds info about receiver of this request
 			switch (userData[0]) {
-				case C_ASK:
+				case Constants.C_ASK:
 					//
-					if (clientsIDs.contains(userData[1])) {
-						SocketChannel askedChannel = clientsChnnls.get(clientsIDs.indexOf(userData[1]));
-						String askingUser = clientsIDs.get(clientsChnnls.indexOf(clientRead));
+                    if (clients.hasUser(userData[1])) {
+                        SocketChannel askedChannel = clients.getChannel(userData[1]);
+
+                        String askingUser = clients.getUser(clientRead);
 
 						ConversationPair convPair = new ConversationPair(clientRead, askedChannel);
 
@@ -255,14 +254,14 @@ public class ServerThread implements Runnable {
 							//asked user available, no such conversation started
 							pendingPairs.add(convPair);
 							readBuffer.putInt(-10);
-							readBuffer.put((askingUser.concat(";")).getBytes(CHARSET));
+							readBuffer.put((askingUser.concat(";")).getBytes(Constants.CHARSET));
 							readBuffer.flip();
 							//forward this request to asked client
 							send(askedChannel, readBuffer.array());
 						} else {
 							//conversation between this users has already started
 							readBuffer.putInt(-20);
-							readBuffer.put((userData[1].concat(";")).getBytes(CHARSET));
+							readBuffer.put((userData[1].concat(";")).getBytes(Constants.CHARSET));
 							readBuffer.flip();
 							//send response about active conv
 							send(clientRead, readBuffer.array());
@@ -270,30 +269,28 @@ public class ServerThread implements Runnable {
 					}
 					break;
 
-				case C_REFUSE:
+				case Constants.C_REFUSE:
 					//user refused, inform client sending request
-					pair = new ConversationPair(clientRead,
-							  clientsChnnls.get(clientsIDs.indexOf(userData[1])));
+                    pair = new ConversationPair(clientRead, clients.getChannel(userData[1]));
 
 					pendingPairs.remove(pair);
 					readBuffer.putInt(-30);
-					readBuffer.put((userData[2] + ";").getBytes(CHARSET));
+					readBuffer.put((userData[2] + ";").getBytes(Constants.CHARSET));
 					readBuffer.flip();
 					send(pair.client2, readBuffer.array());
 					break;
 
-				case C_ACCEPT:
-					if (!clientsIDs.contains(userData[1])) {
+				case Constants.C_ACCEPT:
+                    if (!clients.hasUser(userData[1])) {
 						//this client is no longer available
 						return;
 					}
-					pair = new ConversationPair(clientRead,
-							  clientsChnnls.get(clientsIDs.indexOf(userData[1])));
+                    pair = new ConversationPair(clientRead, clients.getChannel(userData[1]));
 					//conversation request accepted
 					pendingPairs.remove(pair);
 					activePairs.add(pair);
 
-					if (handlerWorkers.size() < CONV_MAX) {
+					if (handlerWorkers.size() < Constants.CONV_MAX) {
 
 						//create new handler and send clients connection data
 						//if limit of conversations was not reached
@@ -310,7 +307,7 @@ public class ServerThread implements Runnable {
 						readBuffer.clear();
 						readBuffer.putInt(-40);
 						readBuffer.put((createPort + ";" + hostName + ";"
-							  + userData[1] + ";" + userData[2] + ";").getBytes(CHARSET));
+							  + userData[1] + ";" + userData[2] + ";").getBytes(Constants.CHARSET));
 						readBuffer.flip();
 						send(pair.client1, readBuffer.array());
 						send(pair.client2, readBuffer.array());
@@ -318,7 +315,7 @@ public class ServerThread implements Runnable {
 					}
 					break;
 
-				case C_CONFIRM:
+				case Constants.C_CONFIRM:
 					int port = Integer.parseInt(userData[2]);
 
 					for (HandleConversation obj : handlerWorkers) {
@@ -342,36 +339,23 @@ public class ServerThread implements Runnable {
 
 	private void write(SelectionKey key) throws IOException {
 		SocketChannel clientSocket = (SocketChannel) key.channel();
-		List<ByteBuffer> queue = pendingData.get(clientSocket);
-		ByteBuffer buffer;
+        ByteBuffer buffer = pendingData.get(clientSocket);
 
+        clientSocket.write(buffer);
 
-		while (!queue.isEmpty()) {
-			buffer = queue.get(0);
-			clientSocket.write(buffer);
-
-			if (buffer.remaining() > 0) {
-                logger.error("!!! buffer was not fully emptied !!!");
-				break;
-			}
-			queue.remove(0);
-		}
-
-		if (queue.isEmpty()) {
-			key.interestOps(SelectionKey.OP_READ);
-		}
+        if (buffer.remaining() > 0) {
+            logger.error("!!! buffer was not fully emptied !!!");
+        }
+        key.interestOps(SelectionKey.OP_READ);
 	}
 
 	private void send(SocketChannel client, byte[] data) {
 
-		ChangeRequest request = new ChangeRequest(client, ChangeRequest.CHANGEOPS, SelectionKey.OP_WRITE);
+		ChangeRequest request = new ChangeRequest(client, ChangeRequest.CHANGEOPS);//, SelectionKey.OP_WRITE);
 		changeRequests.add(request);
 
-		//pendingData.computeIfAbsent(client, value -> new ArrayList<>());
-		//List<ByteBuffer> queue = pendingData.get(client);
-		//queue.add(ByteBuffer.wrap(data));
-		pendingData.computeIfAbsent(client, value -> new ArrayList<>()).add
-				  (ByteBuffer.wrap(data));
+//		pendingData.computeIfAbsent(client, value -> new ArrayList<>()).add(ByteBuffer.wrap(data));
+        pendingData.put(client, ByteBuffer.wrap(data));
 	}
 
 	private void openSocket() {
@@ -382,11 +366,10 @@ public class ServerThread implements Runnable {
 			serverSocket.socket().bind(new InetSocketAddress(hostName, listenPort));
 			serverSocket.register(selector, SelectionKey.OP_ACCEPT);
 
-            logger.info("Starting listening on port {}.", listenPort);
+            logger.info("Starting server, port in use: {}.", listenPort);
 			//isRunning = true;
 		} catch (IOException ioEx) {
-            logger.error("Problem occured while opening listening port - (reason) "
-                    + ioEx.getMessage());
+            logger.error("Problem occured while opening listening port - ({}).", ioEx.getMessage());
             Thread.currentThread().interrupt();
 		}
 	}
@@ -396,36 +379,36 @@ public class ServerThread implements Runnable {
 			if (serverSocket.isOpen())
 				serverSocket.close();
 		} catch (IOException ioEx) {
-            logger.error("Problem occured while closing server socket - "
-                    + ioEx.getMessage());
+            logger.error("Problem occured while closing server socket - ({}).", ioEx.getMessage());
 		}
 	}
 
 	private boolean checkClientID(String clientData) {
-		return appID.equals(clientData);
+		return Constants.APP_ID.equals(clientData);
 	}
 
 	private void dropRegisteredClient(SocketChannel client) {
 
-		//System.out.println("Removing verified client");
-		clientsIDs.remove(clientsChnnls.indexOf(client));
-		clientsChnnls.remove(client);
+//        logger.debug("Removing verified client");
+        clients.dropUser(client);
 
 		readBuffer.clear();
-		readBuffer.putInt(clientsIDs.size());
-		if (clientsIDs.size() > 0) {
-			for (String str : clientsIDs) {
-				readBuffer.put((str.concat(";")).getBytes(CHARSET));
+        readBuffer.putInt(clients.usersCount());
+        if (clients.usersCount() > 0) {
+            for (String str : clients.getUsers()) {
+				readBuffer.put((str.concat(";")).getBytes(Constants.CHARSET));
 			}
 		}
 
-		for (SocketChannel channel : clientsChnnls) {
+        for (SocketChannel channel : clients.getChannels()) {
 			send(channel, readBuffer.array());
 		}
 
 		for (ConversationPair pair : pendingPairs) {
-			if (pair.client1 == client && pair.client2 == client)
-				pendingPairs.remove(pair);
+			if (pair.client1 == client && pair.client2 == client) {
+			    logger.debug("SAME CLIENTS");
+                pendingPairs.remove(pair);
+            }
 		}
 	}
 
@@ -434,29 +417,5 @@ public class ServerThread implements Runnable {
 		//isRunning = false;
 	}*/
 
-	@Override
-	public String toString() {
-		return "ServerThread{" +
-				  "CONV_MAX=" + CONV_MAX +
-				  ", hostName='" + hostName + '\'' +
-				  ", listenPort=" + listenPort +
-				  ", serverSocket=" + serverSocket +
-				  ", selector=" + selector +
-				  ", readBuffer=" + readBuffer +
-				  ", changeRequests=" + changeRequests +
-				  ", pendingData=" + pendingData +
-				  ", clientsState=" + clientsState +
-				  ", handlersExecutor=" + handlersExecutor +
-				  ", charset=" + CHARSET +
-				  ", appID='" + appID + '\'' +
-				  ", clientsIDs=" + clientsIDs +
-				  ", clientsChs=" + clientsChnnls +
-				  ", pendingPairs=" + pendingPairs +
-				  ", activePairs=" + activePairs +
-				  ", handlerWorkers=" + handlerWorkers +
-				  ", handlersPorts=" + handlersPorts +
-				  ", handlersEndData=" + handlersEndData +
-				  '}';
-	}
 }
 

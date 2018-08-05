@@ -182,6 +182,7 @@ public class ClientGUI extends JFrame implements ActionListener, WindowListener,
         @Override
 		public void run() {
 
+            Thread.currentThread().setName("Client_NO_ID");
 			ByteBuffer buffer;
 			try (SocketChannel channel = SocketChannel.open()) {
 				channel.configureBlocking(true);
@@ -209,6 +210,7 @@ public class ClientGUI extends JFrame implements ActionListener, WindowListener,
 						userName = JOptionPane.showInputDialog(rootPanel, "Enter Your login to start,\n" +
 								  "or press 'Cancel' to exit app.\nLogin must contain " +
 								  "at least 3 characters.", "Enter Login", JOptionPane.INFORMATION_MESSAGE);
+
 						if (userName == null) {
 							setVisible(false);
 							dispose();
@@ -227,9 +229,11 @@ public class ClientGUI extends JFrame implements ActionListener, WindowListener,
 					buffer.flip();
 					response = buffer.getInt();
 
-					if (response == -1)
-						JOptionPane.showMessageDialog(rootPanel, "This login is already in use,\n",
-							  "Login error", JOptionPane.INFORMATION_MESSAGE);
+					if (response == -1) {
+                        JOptionPane.showMessageDialog(rootPanel, "This login is already in use,\n",
+                                "Login error", JOptionPane.INFORMATION_MESSAGE);
+                        userName = "";
+                    }
 				}
 
 
@@ -237,6 +241,7 @@ public class ClientGUI extends JFrame implements ActionListener, WindowListener,
 				mainDataQueue = new ArrayBlockingQueue<>(Constants.BLOCKING_SIZE);
 				ownerName.setText(userName);
 				setVisible(true);
+				Thread.currentThread().setName("Client_" + userName);
 
 				// wyswietlanie listy uzytkownikow
 				boolean clientsUpdate = true;
