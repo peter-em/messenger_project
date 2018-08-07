@@ -30,7 +30,6 @@ public class Writer implements Runnable {
 
 		isRunning = true;
 		try {
-			String inputArray[];
 			String input;
 			while (isRunning) {
 
@@ -43,12 +42,11 @@ public class Writer implements Runnable {
 						continue;
 					}
 
-					inputArray = input.split(";");
-					if (inputArray[0].equalsIgnoreCase("s"))
-						break;
+                    if (input.length() == 0)
+                        break;
 
 					buffer.clear();
-					buffer.put(inputArray[1].getBytes(Constants.CHARSET));
+                    buffer.put(input.getBytes(Constants.CHARSET));
 					buffer.flip();
 					channel.write(buffer);
 					buffer.clear();
