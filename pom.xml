@@ -25,6 +25,11 @@
         <module>server</module>
     </modules>
 
+    <ciManagement>
+        <system>Travis CI</system>
+        <url>https://travis-ci.org/peter-em/messenger_project</url>
+    </ciManagement>
+
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 
