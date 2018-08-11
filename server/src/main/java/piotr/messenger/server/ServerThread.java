@@ -24,11 +24,9 @@ public class ServerThread implements Runnable {
 	private ServerSocketChannel serverSocket;
 	private Selector selector;
 	//private boolean isRunning = false;
-	private ByteBuffer readBuffer;
-	private List<ChangeRequest> changeRequests;
 	//mapowanie socketChannel clienta do listy instancji ByteBufforow
-//	private Map<SocketChannel, List<ByteBuffer>> pendingData;
-    private Map<SocketChannel, ByteBuffer> pendingData;
+	private Map<SocketChannel, List<ByteBuffer>> pendingData;
+//    private Map<SocketChannel, ByteBuffer> pendingData;
 	private Map<SocketChannel, ClientState> clientsState;
 	private ExecutorService handlersExecutor;
     private Clients clients;
@@ -45,8 +43,6 @@ public class ServerThread implements Runnable {
 		System.setProperty("sun.net.useExclusiveBind", "false");
 		this.hostName = Constants.HOST_NAME;
 		this.listenPort = Constants.PORT;
-		readBuffer = ByteBuffer.allocate(Constants.BUFF_SIZE);
-		changeRequests = new LinkedList<>();//or maybe ArrayList<> should be used
 		pendingData = new HashMap<>();
 		clientsState = new HashMap<>();
         clients = new Clients();
@@ -72,17 +68,6 @@ public class ServerThread implements Runnable {
 		while (!Thread.interrupted()) {
 			try {
 
-//			    int counter = 0;
-				for (ChangeRequest change : changeRequests) {
-                    SelectionKey selectionKey = change.socket.keyFor(selector);
-//                    logger.debug("change.ops: {}", change.ops);
-//                    logger.debug("KEY: {}", selectionKey.toString());
-                    selectionKey.interestOps(SelectionKey.OP_WRITE);
-//                    counter++;
-				}
-//				logger.debug("RUN counter: {}", counter);
-				changeRequests.clear();
-
 				//clear leftovers from terminated conversation handler
 				while (!handlersEndData.isEmpty()) {
                     ConversationEnd data = handlersEndData.take();
@@ -93,12 +78,11 @@ public class ServerThread implements Runnable {
 
 				//iterating through set of keys which have available events
 				selector.select();
-				Iterator selectedKeys;
 				SelectionKey key;
-				selectedKeys = selector.selectedKeys().iterator();
+                Iterator<SelectionKey> selectedKeys = selector.selectedKeys().iterator();
 				//while (selectedKeys.hasNext() && isRunning) {
 				while (selectedKeys.hasNext()) {
-					key = (SelectionKey) selectedKeys.next();
+                    key = selectedKeys.next();
 					selectedKeys.remove();
 
 					//check for available event and handle it
@@ -106,7 +90,7 @@ public class ServerThread implements Runnable {
                         logger.error("INVALID KEY");
 					} else if (key.isAcceptable()) {
 //						logger.debug("new client");
-						accept(key);
+						accept();
 					} else if (key.isReadable()) {
 //						logger.debug("reading from client");
 						read(key);
@@ -133,11 +117,12 @@ public class ServerThread implements Runnable {
 		handlersExecutor.shutdown();
 	}
 
-	private void accept(SelectionKey key) throws IOException {
+	private void accept(/*SelectionKey key*/) throws IOException {
 
-		ServerSocketChannel serverSocketChannel = (ServerSocketChannel)key.channel();
+//		ServerSocketChannel serverSocketChannel = (ServerSocketChannel)key.channel();
 		//accept incoming connection, set it in non-blocking mode
-		SocketChannel newClient = serverSocketChannel.accept();
+//		SocketChannel newClient = serverSocketChannel.accept();
+        SocketChannel newClient = serverSocket.accept();
 		newClient.configureBlocking(false);
 		//register new client with selector, prepared for reading incoming data
 		newClient.register(selector, SelectionKey.OP_READ);
@@ -150,7 +135,8 @@ public class ServerThread implements Runnable {
 		ClientState state = clientsState.get(clientRead);
 
 		//clear read buffer before accepting incoming data
-		readBuffer.clear();
+        ByteBuffer readBuffer = ByteBuffer.allocate(Constants.BUFF_SIZE);
+//		readBuffer.clear();
 		int bytesRead = -1;
 		//try to read from client's channel
 		try {
@@ -178,7 +164,7 @@ public class ServerThread implements Runnable {
 		readBuffer.flip();
 		if (state.getState() == ClientState.WERIFYAPP) {
 //		    logger.debug("app verification");
-		//perform app veryfication
+		    //perform app veryfication
 			byte[] dataCopy = new byte[Constants.APP_ID.length()];
 			System.arraycopy(readBuffer.array(), 0, dataCopy, 0, Constants.APP_ID.length());
 
@@ -200,37 +186,21 @@ public class ServerThread implements Runnable {
 			//veryfication successful, returning list of connected clients
 			//or -1 if provided login is already in use
 
-            // this if statement below prob requires some refactoring !!
 			readBuffer.clear();
 
 			if (clients.hasUser(clientId)) {
 			    readBuffer.putInt(-1);
-			    readBuffer.flip();
-			    send(clientRead, readBuffer.array());
+
             } else {
-			    clients.addUser(clientId, clientRead);
-			    StringBuilder usersList = new StringBuilder();
-			    for (String str : clients.getUsers()) {
-			        usersList.append(str);
-			        usersList.append(';');
-                }
-                readBuffer.putInt(clients.usersCount());
-                readBuffer.put(usersList.toString().getBytes(Constants.CHARSET));
+                readBuffer.putInt(0);
+                clients.addUser(clientId, clientRead);
                 //change client state from waiting for veryfication
                 //into enabling conversations
                 state.setState(ClientState.SERVECLIENT);
-                //update all connected clients with information
-                //about quantity and logins of active users
-                readBuffer.flip();
-//			int counter = 0;
-                for (SocketChannel clnt : clients.getChannels()) {
-//			    counter++;
-                    send(clnt, readBuffer.array());
-                }
-//			logger.debug("COUNTER: {}", counter);
             }
-
-
+            readBuffer.flip();
+            send(clientRead, readBuffer.array());
+            sendUserListToClients();
 
 		} else if (state.getState() == ClientState.SERVECLIENT) {
 			//Veryfied client tries to create new conversation
@@ -339,24 +309,49 @@ public class ServerThread implements Runnable {
 
 	private void write(SelectionKey key) throws IOException {
 		SocketChannel clientSocket = (SocketChannel) key.channel();
-        ByteBuffer buffer = pendingData.get(clientSocket);
 
-        clientSocket.write(buffer);
-
-        if (buffer.remaining() > 0) {
-            logger.error("!!! buffer was not fully emptied !!!");
+        for (ByteBuffer buff : pendingData.get(clientSocket)) {
+            clientSocket.write(buff);
         }
+        pendingData.get(clientSocket).clear();
+
+
+//        if (buffer.remaining() > 0) {
+//            logger.error("!!! buffer was not fully emptied !!!");
+//        }
         key.interestOps(SelectionKey.OP_READ);
 	}
 
 	private void send(SocketChannel client, byte[] data) {
 
-		ChangeRequest request = new ChangeRequest(client, ChangeRequest.CHANGEOPS);//, SelectionKey.OP_WRITE);
-		changeRequests.add(request);
-
 //		pendingData.computeIfAbsent(client, value -> new ArrayList<>()).add(ByteBuffer.wrap(data));
-        pendingData.put(client, ByteBuffer.wrap(data));
+        pendingData.computeIfAbsent(client, value -> new ArrayList<>());
+        pendingData.get(client).add(ByteBuffer.wrap(data));
+
+
+        SelectionKey selectionKey = client.keyFor(selector);
+        selectionKey.interestOps(SelectionKey.OP_WRITE);
+
 	}
+
+	private void sendUserListToClients() {
+	    ByteBuffer buffer = ByteBuffer.allocate(Constants.BUFF_SIZE);
+        StringBuilder usersList = new StringBuilder();
+        for (String str : clients.getUsers()) {
+            usersList.append(str);
+            usersList.append(';');
+        }
+        buffer.putInt(clients.usersCount());
+        logger.debug("READ count: {}, list: {}", clients.usersCount(), usersList);
+        buffer.put(usersList.toString().getBytes(Constants.CHARSET));
+
+        //update all connected clients with information
+        //about quantity and logins of active users
+        buffer.flip();
+        for (SocketChannel clnt : clients.getChannels()) {
+            send(clnt, buffer.array());
+        }
+    }
 
 	private void openSocket() {
 		try {
@@ -389,20 +384,8 @@ public class ServerThread implements Runnable {
 
 	private void dropRegisteredClient(SocketChannel client) {
 
-//        logger.debug("Removing verified client");
         clients.dropUser(client);
-
-		readBuffer.clear();
-        readBuffer.putInt(clients.usersCount());
-        if (clients.usersCount() > 0) {
-            for (String str : clients.getUsers()) {
-				readBuffer.put((str.concat(";")).getBytes(Constants.CHARSET));
-			}
-		}
-
-        for (SocketChannel channel : clients.getChannels()) {
-			send(channel, readBuffer.array());
-		}
+        sendUserListToClients();
 
 		for (ConversationPair pair : pendingPairs) {
 			if (pair.client1 == client && pair.client2 == client) {

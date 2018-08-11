@@ -328,19 +328,19 @@ public class ClientGUI extends JFrame implements ActionListener, WindowListener,
 	private class HandleWorkload implements Runnable {
 
 	    Logger logger;
-        private boolean clientsUpdate;
         private boolean awaitingConv;
         private ByteBuffer buffer;
         private SocketChannel channel;
         private List<String> convUsers;
         private DialogsHandler dialogs;
+        private List<String> clientsNames;
 
         HandleWorkload(Logger logger) {
             this.logger = logger;
-            clientsUpdate = true;
             awaitingConv = false;
             convUsers = new LinkedList<>();
             dialogs = new DialogsHandler(mainPanel);
+            clientsNames = new LinkedList<>();
         }
 
         private SocketChannel connectToServer() {
@@ -368,24 +368,38 @@ public class ClientGUI extends JFrame implements ActionListener, WindowListener,
         private void handleResponse(int response) {
             String usersData = new String(buffer.array(), Constants.CHARSET);
             //user holds another user's login
-            String user = usersData.split(";")[0];
+//            logger.info("input: {}", usersData);
+//            logger.info("response: {}", response);
+            String[] users = usersData.split(";");
             if (response > 0) {
-                //response greater than 0 means update active clients list
-                clientsUpdate = true;
-//                continue;
+
+                clientsNames.clear();
+                for (int i = 0; i < response; i++) {
+                    if (userName.equals(users[i]))
+                        continue;
+                    clientsNames.add(users[i]);
+                }
+                Collections.sort(clientsNames);
+
+                defListModel.removeAllElements();
+                for (String str : clientsNames) {
+                    defListModel.addElement(str);
+                }
+                usersCount.setText("Active users: " + defListModel.size());
+
             } else if (response == -10) {
                 //another user wants to talk
-                mainDataQueue.add(dialogs.convInvite(user));
+                mainDataQueue.add(dialogs.convInvite(users[0]));
                 awaitingConv = true;
-                convUsers.add(user);
+                convUsers.add(users[0]);
 
             } else if (response == -20) {
                 //response when asked conv has already started
-                dialogs.hasStarted(user);
+                dialogs.hasStarted(users[0]);
 
             } else if (response == -30) {
                 //asked user refused conversation
-                dialogs.refused(user);
+                dialogs.refused(users[0]);
             } else if (response == -40) {
 
                 //user accepted invitation
@@ -403,6 +417,8 @@ public class ClientGUI extends JFrame implements ActionListener, WindowListener,
                 if (doConnect(connectData[1], Integer.parseInt(connectData[0]), startConvUser)) {
                     createConvPage(startConvUser);
                 }
+            } else if (response == -100) {
+                logger.info("CO TU SIEM ODPIERDALA");
             }
         }
 
@@ -444,6 +460,7 @@ public class ClientGUI extends JFrame implements ActionListener, WindowListener,
 				userName = "";
 
 				int response = -1;
+                int bytesRead = 0;
 				while (response == -1) {
 
 					while (userName.length() < 3) {
@@ -465,7 +482,7 @@ public class ClientGUI extends JFrame implements ActionListener, WindowListener,
 					channel.write(buffer);
 
 					buffer.clear();
-					channel.read(buffer);
+					bytesRead = channel.read(buffer);
 					buffer.flip();
 					response = buffer.getInt();
 
@@ -475,6 +492,7 @@ public class ClientGUI extends JFrame implements ActionListener, WindowListener,
                         userName = "";
                     }
 				}
+                channel.configureBlocking(false);
 
 
 				//reveal window app if verification was succesful
@@ -486,56 +504,25 @@ public class ClientGUI extends JFrame implements ActionListener, WindowListener,
 				// wyswietlanie listy uzytkownikow
 
 				boolean sendOK;
-				int bytesRead = 0;
+
 				String[] inputArray;
 				String input;
 
 				List<String> removingConvs = new ArrayList<>();
-				List<String> clientsNames = new LinkedList<>();
-				channel.configureBlocking(false);
 
-				buffer.compact();
+
 				while (bytesRead != -1) {
 
-					if (clientsUpdate) {
-						//print active users
-						if (response == 1) {
-							//no other users
-							if (defListModel.size() != 0) {
-								defListModel.removeAllElements();
-								usersCount.setText("Active users: " + defListModel.size());
-							}
-						} else {
-							String usersData = new String(buffer.array(), Constants.CHARSET);
-							String[] users = usersData.split(";");
+                    buffer.clear();
+                    bytesRead = channel.read(buffer);
+                    if (bytesRead != 0) {
+                        buffer.flip();
+                        response = buffer.getInt();
+                        buffer.compact();
 
-							clientsNames.clear();
-							for (int i = 0; i < response; i++) {
-								if (userName.equals(users[i]))
-									continue;
-								clientsNames.add(users[i]);
-							}
-							Collections.sort(clientsNames);
-							if (defListModel.size() != 0) {
-								defListModel.removeAllElements();
-							}
-							for (String str : clientsNames) {
-								defListModel.addElement(str);
-							}
-							usersCount.setText("Active users: " + defListModel.size());
-						}
-						clientsUpdate = false;
-					}
+                        handleResponse(response);
+                    }
 
-					buffer.clear();
-					bytesRead = channel.read(buffer);
-					if (bytesRead != 0) {
-						buffer.flip();
-						response = buffer.getInt();
-						buffer.compact();
-
-						handleResponse(response);
-					}
 
 					if (!mainDataQueue.isEmpty()) {
 
