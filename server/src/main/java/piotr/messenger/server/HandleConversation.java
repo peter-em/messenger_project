@@ -21,25 +21,24 @@ public class HandleConversation implements Runnable {
 	private ServerSocketChannel handler;
 	private SocketChannel client1;
 	private SocketChannel client2;
-	private Selector talkSelector;
+	private Selector convSelector;
 	private String handlerAddress;
 	private int handlerPort;
 	private ByteBuffer readBuffer;
 	private int clientCount;
 	private volatile boolean isRunning;
 	private volatile boolean isWaiting;
-	private List<ChangeRequest> changeRequests;
 //	private Map<SocketChannel, List<ByteBuffer>> pendingData;
     private Map<SocketChannel, ByteBuffer> pendingData;
 	private ArrayBlockingQueue<ConversationEnd> handlersEndData;
 	private ConversationPair convPair;
 	private final Logger logger;
+	private int timer;
 
 	HandleConversation(String handlerAddress, int handlerPort,
 									  ArrayBlockingQueue<ConversationEnd> queue, ConversationPair pair) {
 
         logger = LoggerFactory.getLogger(HandleConversation.class);
-		changeRequests = new LinkedList<>();
 		pendingData = new HashMap<>();
 		this.handlerAddress = handlerAddress;
 		this.handlerPort = handlerPort;
@@ -47,6 +46,7 @@ public class HandleConversation implements Runnable {
 		convPair = pair;
 		readBuffer = ByteBuffer.allocate(Constants.BUFF_SIZE*2);
 		clientCount = 0;
+		timer = 0;
 		isRunning = false;
 		isWaiting = true;
 		openSocket();
@@ -56,7 +56,7 @@ public class HandleConversation implements Runnable {
 	public void run() {
 
 
-		int timer = 0;
+
 		try {
 			while (isWaiting && timer < 1200) {
 				TimeUnit.MILLISECONDS.sleep(50);
@@ -72,24 +72,17 @@ public class HandleConversation implements Runnable {
 			isRunning = true;
 			isWaiting = false;
 		}
-		Iterator selectedKeys;
-		SelectionKey key;
+
 		while (isRunning) {
 			try {
-				for (ChangeRequest changeRequest : changeRequests) {
-					switch (changeRequest.type) {
-						case ChangeRequest.CHANGEOPS:
-							SelectionKey swKey = changeRequest.socket.keyFor(talkSelector);
-//							swKey.interestOps(changeRequest.ops);
-                            swKey.interestOps(SelectionKey.OP_WRITE);
-					}
-				}
-				changeRequests.clear();
-				talkSelector.select();
 
-				selectedKeys = talkSelector.selectedKeys().iterator();
+				convSelector.select();
+
+                SelectionKey key;
+                Iterator<SelectionKey> selectedKeys;
+				selectedKeys = convSelector.selectedKeys().iterator();
 				while (selectedKeys.hasNext() && isRunning) {
-					key = (SelectionKey)selectedKeys.next();
+					key = selectedKeys.next();
 					selectedKeys.remove();
 
 					if (!key.isValid())
@@ -129,8 +122,8 @@ public class HandleConversation implements Runnable {
 
 			newClient.configureBlocking(false);
 			if (clientCount == 2) {
-				client1.register(talkSelector, SelectionKey.OP_READ);
-				client2.register(talkSelector, SelectionKey.OP_READ);
+				client1.register(convSelector, SelectionKey.OP_READ);
+				client2.register(convSelector, SelectionKey.OP_READ);
 			}
 		} else {
 			SocketChannel cancelCh = serverSocketChannel.accept();
@@ -204,29 +197,24 @@ public class HandleConversation implements Runnable {
 
 	private void send(SocketChannel client, byte[] data) {
 
-		changeRequests.add(new ChangeRequest(client, ChangeRequest.CHANGEOPS));//, SelectionKey.OP_WRITE));
-
-		//pendingData.computeIfAbsent(client, value -> new ArrayList<>());
-		//List<ByteBuffer> queue = pendingData.get(client);
-		//queue.add(ByteBuffer.wrap(data));
-//		pendingData.computeIfAbsent(client, value -> new ArrayList<>()).add(ByteBuffer.wrap(data));
         pendingData.put(client, ByteBuffer.wrap(data));
+        SelectionKey selectionKey = client.keyFor(convSelector);
+        selectionKey.interestOps(SelectionKey.OP_WRITE);
 	}
 
 	private void openSocket() {
 		try {
 			handler = ServerSocketChannel.open();
-			talkSelector = SelectorProvider.provider().openSelector();
+			convSelector = SelectorProvider.provider().openSelector();
 			handler.configureBlocking(false);
 
 			handler.socket().bind(new InetSocketAddress(handlerAddress, handlerPort));
-			handler.register(talkSelector, SelectionKey.OP_ACCEPT);
+			handler.register(convSelector, SelectionKey.OP_ACCEPT);
 
 			isRunning = true;
 		} catch (IOException ioEx) {
-//			System.err.println("Problem occured while opening handler port");
-//			System.err.println(ioEx.getMessage());
-
+            logger.error("Exception while opening channel ({}).", ioEx.getMessage());
+            timer = 1200;
 		}
 	}
 
@@ -234,7 +222,7 @@ public class HandleConversation implements Runnable {
 		try {
 			if (handler.isOpen()) {
 				handler.close();
-				talkSelector.close();
+				convSelector.close();
 			}
 		} catch (IOException ioEx) {
 			System.err.println("Problem occured while closing server socket");
@@ -242,16 +230,16 @@ public class HandleConversation implements Runnable {
 		}
 	}
 
-	public boolean isRunning() { return isRunning; }
+	boolean isRunning() { return isRunning; }
 
-	public boolean isWaiting() { return isWaiting; }
+	boolean isWaiting() { return isWaiting; }
 
-	public void startHandler() {
+	void startHandler() {
 		if (isWaiting) {
 			isWaiting = false;
 		}
 	}
 
-	public int getHandlerSocket() { return handlerPort; }
+	int getHandlerSocket() { return handlerPort; }
 }
 

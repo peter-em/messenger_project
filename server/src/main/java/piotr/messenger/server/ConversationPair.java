@@ -31,8 +31,8 @@ public class ConversationPair {
 		return result;
 	}
 
-	public boolean hasClient(SocketChannel client) {
-		return client == client2;
+	boolean hasNullClient() {
+		return client1 == null || client2 == null;
 	}
 }
 

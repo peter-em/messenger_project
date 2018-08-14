@@ -40,7 +40,11 @@ class Clients {
     }
 
     SocketChannel getChannel(String userName) {
-        return channels.get(clients.indexOf(userName));
+        int index = clients.indexOf(userName);
+        if (index != -1)
+            return channels.get(index);
+        else
+            return null;
     }
 
     void dropUser(SocketChannel channel) {

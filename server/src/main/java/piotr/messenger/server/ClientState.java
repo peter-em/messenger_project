@@ -2,22 +2,21 @@ package piotr.messenger.server;
 
 public class ClientState {
 
-	public static final int WERIFYAPP = 0;
-	public static final int WAITFORUID = 1;
-	public static final int SERVECLIENT = 3;
+	static final int WAITFORUID = 1;
+	static final int SERVECLIENT = 3;
 	//public static final int HASCONV = 4;
 
 	private int state;
 
 	ClientState() {
-		state = WERIFYAPP;
+        state = WAITFORUID;
 	}
 
-	public int getState() {
+	int getState() {
 		return state;
 	}
 
-	public void setState(int state) {
+	void setState(int state) {
 		this.state = state;
 	}
 

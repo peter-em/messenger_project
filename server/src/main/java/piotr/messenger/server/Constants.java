@@ -16,5 +16,4 @@ class Constants {
     static final String C_ACCEPT = "y";
     static final String C_CONFIRM = "c";
     static final Charset CHARSET = Charset.forName("UTF-8");
-    static final String APP_ID = "MessageServerClient";
 }

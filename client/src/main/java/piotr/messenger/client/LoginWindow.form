@@ -1,0 +1,153 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<form xmlns="http://www.intellij.com/uidesigner/form/" version="1" bind-to-class="piotr.messenger.client.LoginWindow">
+  <grid id="27dc6" binding="loginPanel" layout-manager="GridBagLayout">
+    <constraints>
+      <xy x="179" y="112" width="263" height="431"/>
+    </constraints>
+    <properties/>
+    <border type="none">
+      <size top="4" left="4" bottom="4" right="4"/>
+    </border>
+    <children>
+      <component id="e6d7b" class="javax.swing.JLabel" binding="passwordLabel">
+        <constraints>
+          <grid row="2" column="0" row-span="1" col-span="1" vsize-policy="0" hsize-policy="0" anchor="0" fill="1" indent="0" use-parent-layout="false"/>
+          <gridbag top="2" left="6" bottom="2" right="2" weightx="1.0" weighty="0.0"/>
+        </constraints>
+        <properties>
+          <alignmentX value="0.5"/>
+          <font name="Consolas" style="1"/>
+          <maximumSize width="53" height="24"/>
+          <minimumSize width="53" height="24"/>
+          <preferredSize width="53" height="24"/>
+          <requestFocusEnabled value="true"/>
+          <text value="Password:"/>
+        </properties>
+      </component>
+      <component id="7d74" class="javax.swing.JLabel" binding="loginLabel">
+        <constraints>
+          <grid row="1" column="0" row-span="1" col-span="1" vsize-policy="0" hsize-policy="0" anchor="0" fill="1" indent="0" use-parent-layout="false"/>
+          <gridbag top="2" left="6" bottom="2" right="2" weightx="1.0" weighty="0.0"/>
+        </constraints>
+        <properties>
+          <alignmentX value="0.5"/>
+          <font name="Consolas" style="1"/>
+          <maximumSize width="33" height="24"/>
+          <minimumSize width="33" height="24"/>
+          <preferredSize width="33" height="24"/>
+          <requestFocusEnabled value="false"/>
+          <text value="Username:"/>
+        </properties>
+      </component>
+      <component id="709a6" class="javax.swing.JPasswordField" binding="passwordField">
+        <constraints>
+          <grid row="2" column="1" row-span="1" col-span="1" vsize-policy="0" hsize-policy="6" anchor="4" fill="0" indent="0" use-parent-layout="false">
+            <preferred-size width="150" height="-1"/>
+          </grid>
+          <gridbag top="2" left="2" bottom="2" right="6" weightx="0.0" weighty="0.0"/>
+        </constraints>
+        <properties>
+          <columns value="0"/>
+          <margin top="1" left="1" bottom="1" right="0"/>
+          <maximumSize width="130" height="24"/>
+          <minimumSize width="130" height="24"/>
+          <preferredSize width="130" height="24"/>
+        </properties>
+      </component>
+      <component id="8f806" class="javax.swing.JTextField" binding="loginField">
+        <constraints>
+          <grid row="1" column="1" row-span="1" col-span="1" vsize-policy="0" hsize-policy="6" anchor="4" fill="0" indent="0" use-parent-layout="false">
+            <preferred-size width="150" height="-1"/>
+          </grid>
+          <gridbag top="2" left="2" bottom="2" right="6" weightx="0.0" weighty="0.0"/>
+        </constraints>
+        <properties>
+          <columns value="0"/>
+          <font name="Consolas" size="12" style="1"/>
+          <margin top="1" left="1" bottom="1" right="0"/>
+          <maximumSize width="130" height="24"/>
+          <minimumSize width="130" height="24"/>
+          <preferredSize width="130" height="24"/>
+        </properties>
+      </component>
+      <component id="fb86f" class="javax.swing.JTextPane" binding="loginInfo">
+        <constraints>
+          <grid row="0" column="0" row-span="1" col-span="2" vsize-policy="6" hsize-policy="6" anchor="1" fill="1" indent="0" use-parent-layout="false">
+            <preferred-size width="150" height="50"/>
+          </grid>
+          <gridbag top="2" left="6" bottom="4" right="6" weightx="1.0" weighty="0.5"/>
+        </constraints>
+        <properties>
+          <editable value="false"/>
+          <focusCycleRoot value="false"/>
+          <focusable value="false"/>
+          <font name="Consolas" size="12" style="1"/>
+          <margin top="4" left="4" bottom="4" right="4"/>
+          <opaque value="false"/>
+          <requestFocusEnabled value="false"/>
+          <text value="Login Information"/>
+        </properties>
+      </component>
+      <component id="b06f" class="javax.swing.JButton" binding="sendButton" default-binding="true">
+        <constraints>
+          <grid row="4" column="0" row-span="1" col-span="1" vsize-policy="0" hsize-policy="3" anchor="8" fill="0" indent="0" use-parent-layout="false"/>
+          <gridbag top="6" left="22" bottom="4" right="2" weightx="0.0" weighty="0.0"/>
+        </constraints>
+        <properties>
+          <alignmentX value="0.5"/>
+          <margin top="2" left="6" bottom="2" right="6"/>
+          <maximumSize width="76" height="26"/>
+          <minimumSize width="76" height="26"/>
+          <opaque value="true"/>
+          <preferredSize width="76" height="26"/>
+          <requestFocusEnabled value="false"/>
+          <text value="Log In"/>
+          <verifyInputWhenFocusTarget value="false"/>
+        </properties>
+      </component>
+      <component id="b89bb" class="javax.swing.JLabel" binding="invalidLogin">
+        <constraints>
+          <grid row="3" column="0" row-span="1" col-span="2" vsize-policy="0" hsize-policy="0" anchor="0" fill="0" indent="0" use-parent-layout="false"/>
+          <gridbag top="2" left="0" bottom="0" right="0" weightx="1.0" weighty="0.0"/>
+        </constraints>
+        <properties>
+          <enabled value="true"/>
+          <focusable value="false"/>
+          <font style="1"/>
+          <foreground color="-4521974"/>
+          <horizontalAlignment value="0"/>
+          <horizontalTextPosition value="0"/>
+          <requestFocusEnabled value="false"/>
+          <text value="Log In/Sign Up error"/>
+          <visible value="false"/>
+        </properties>
+      </component>
+      <component id="50b23" class="javax.swing.JButton" binding="cancelButton" default-binding="true">
+        <constraints>
+          <grid row="4" column="1" row-span="1" col-span="1" vsize-policy="0" hsize-policy="3" anchor="4" fill="0" indent="0" use-parent-layout="false"/>
+          <gridbag top="6" left="2" bottom="4" right="24" weightx="0.0" weighty="0.0"/>
+        </constraints>
+        <properties>
+          <alignmentX value="0.5"/>
+          <margin top="2" left="6" bottom="2" right="6"/>
+          <maximumSize width="72" height="26"/>
+          <minimumSize width="72" height="26"/>
+          <preferredSize width="72" height="26"/>
+          <requestFocusEnabled value="false"/>
+          <text value="Cancel"/>
+          <verifyInputWhenFocusTarget value="false"/>
+        </properties>
+      </component>
+      <component id="91298" class="javax.swing.JLabel" binding="switchSignupLogin">
+        <constraints>
+          <grid row="5" column="0" row-span="1" col-span="2" vsize-policy="0" hsize-policy="0" anchor="8" fill="0" indent="0" use-parent-layout="false"/>
+          <gridbag top="6" left="6" bottom="6" right="6" weightx="0.0" weighty="0.0"/>
+        </constraints>
+        <properties>
+          <font name="Consolas"/>
+          <text value="Label"/>
+        </properties>
+      </component>
+    </children>
+  </grid>
+</form>

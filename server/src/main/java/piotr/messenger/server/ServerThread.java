@@ -12,8 +12,6 @@ import java.util.concurrent.Executors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import ch.qos.logback.classic.LoggerContext;
-import ch.qos.logback.core.util.StatusPrinter;
 
 
 public class ServerThread implements Runnable {
@@ -59,11 +57,7 @@ public class ServerThread implements Runnable {
 	@Override
 	public void run() {
 
-        LoggerContext lc = (LoggerContext)LoggerFactory.getILoggerFactory();
-        StatusPrinter.print(lc);
         openSocket();
-
-
 
 		while (!Thread.interrupted()) {
 			try {
@@ -88,11 +82,10 @@ public class ServerThread implements Runnable {
 					//check for available event and handle it
 					if (!key.isValid()) {
                         logger.error("INVALID KEY");
+                        key.cancel();
 					} else if (key.isAcceptable()) {
-//						logger.debug("new client");
 						accept();
 					} else if (key.isReadable()) {
-//						logger.debug("reading from client");
 						read(key);
 					} else if (key.isWritable()) {
 						write(key);
@@ -119,24 +112,21 @@ public class ServerThread implements Runnable {
 
 	private void accept(/*SelectionKey key*/) throws IOException {
 
-//		ServerSocketChannel serverSocketChannel = (ServerSocketChannel)key.channel();
 		//accept incoming connection, set it in non-blocking mode
-//		SocketChannel newClient = serverSocketChannel.accept();
         SocketChannel newClient = serverSocket.accept();
 		newClient.configureBlocking(false);
 		//register new client with selector, prepared for reading incoming data
 		newClient.register(selector, SelectionKey.OP_READ);
-//        logger.debug("Client accepted, waiting for data");
 		clientsState.put(newClient, new ClientState());
+        pendingData.put(newClient, new LinkedList<>());
 	}
 
 	private void read(SelectionKey key) throws IOException {
 		SocketChannel clientRead = (SocketChannel)key.channel();
 		ClientState state = clientsState.get(clientRead);
 
-		//clear read buffer before accepting incoming data
+		//create read buffer for incoming data
         ByteBuffer readBuffer = ByteBuffer.allocate(Constants.BUFF_SIZE);
-//		readBuffer.clear();
 		int bytesRead = -1;
 		//try to read from client's channel
 		try {
@@ -150,7 +140,6 @@ public class ServerThread implements Runnable {
 		if (bytesRead <= 0) {
 			//client ended connection clearly, server closes corresponding channel
 			if (state.getState() > ClientState.WAITFORUID) {
-//				logger.debug("dropRegisteredClient");
 				dropRegisteredClient(clientRead);
 			}
 			clientsState.remove(clientRead);
@@ -160,38 +149,22 @@ public class ServerThread implements Runnable {
 			return;
 		}
 
-//		logger.debug("reading proceeds");
 		readBuffer.flip();
-		if (state.getState() == ClientState.WERIFYAPP) {
-//		    logger.debug("app verification");
-		    //perform app veryfication
-			byte[] dataCopy = new byte[Constants.APP_ID.length()];
-			System.arraycopy(readBuffer.array(), 0, dataCopy, 0, Constants.APP_ID.length());
 
-			if (!checkClientID(new String(dataCopy, Constants.CHARSET))) {
-				//client hasnt provided proper ID
-				//(invalid app) --> dumping connection
-				clientRead.close();
-				key.cancel();
-				clientsState.remove(clientRead);
-			} else {
-				//change client state if application is valid
-				state.setState(ClientState.WAITFORUID);
-			}
-		} else if (state.getState() == ClientState.WAITFORUID) {
-//		    logger.debug("client verification");
+		if (state.getState() == ClientState.WAITFORUID) {
 			String clientData = new String(readBuffer.array(), Constants.CHARSET);
 			String clientId = clientData.split(";")[0];
 
-			//veryfication successful, returning list of connected clients
-			//or -1 if provided login is already in use
-
 			readBuffer.clear();
 
+            //veryfication successful, returning list of connected clients
+            //or -1 if provided login is already in use
 			if (clients.hasUser(clientId)) {
 			    readBuffer.putInt(-1);
+//			    logger.debug("ID IN USE");
 
             } else {
+//			    logger.debug("ID FREE");
                 readBuffer.putInt(0);
                 clients.addUser(clientId, clientRead);
                 //change client state from waiting for veryfication
@@ -211,7 +184,7 @@ public class ServerThread implements Runnable {
 			//userData[1] holds info about receiver of this request
 			switch (userData[0]) {
 				case Constants.C_ASK:
-					//
+//				    logger.debug("ASK");
                     if (clients.hasUser(userData[1])) {
                         SocketChannel askedChannel = clients.getChannel(userData[1]);
 
@@ -240,6 +213,7 @@ public class ServerThread implements Runnable {
 					break;
 
 				case Constants.C_REFUSE:
+//				    logger.debug("REFUSE");
 					//user refused, inform client sending request
                     pair = new ConversationPair(clientRead, clients.getChannel(userData[1]));
 
@@ -251,11 +225,12 @@ public class ServerThread implements Runnable {
 					break;
 
 				case Constants.C_ACCEPT:
-                    if (!clients.hasUser(userData[1])) {
-						//this client is no longer available
-						return;
-					}
+//				    logger.debug("ACCEPT");
                     pair = new ConversationPair(clientRead, clients.getChannel(userData[1]));
+                    if (pair.hasNullClient()) {
+//                        logger.debug("ACCEPT - has null");
+                        return;
+                    }
 					//conversation request accepted
 					pendingPairs.remove(pair);
 					activePairs.add(pair);
@@ -286,6 +261,7 @@ public class ServerThread implements Runnable {
 					break;
 
 				case Constants.C_CONFIRM:
+//				    logger.debug("CONFIRM");
 					int port = Integer.parseInt(userData[2]);
 
 					for (HandleConversation obj : handlerWorkers) {
@@ -324,14 +300,10 @@ public class ServerThread implements Runnable {
 
 	private void send(SocketChannel client, byte[] data) {
 
-//		pendingData.computeIfAbsent(client, value -> new ArrayList<>()).add(ByteBuffer.wrap(data));
-        pendingData.computeIfAbsent(client, value -> new ArrayList<>());
         pendingData.get(client).add(ByteBuffer.wrap(data));
-
 
         SelectionKey selectionKey = client.keyFor(selector);
         selectionKey.interestOps(SelectionKey.OP_WRITE);
-
 	}
 
 	private void sendUserListToClients() {
@@ -342,7 +314,6 @@ public class ServerThread implements Runnable {
             usersList.append(';');
         }
         buffer.putInt(clients.usersCount());
-        logger.debug("READ count: {}, list: {}", clients.usersCount(), usersList);
         buffer.put(usersList.toString().getBytes(Constants.CHARSET));
 
         //update all connected clients with information
@@ -378,21 +349,12 @@ public class ServerThread implements Runnable {
 		}
 	}
 
-	private boolean checkClientID(String clientData) {
-		return Constants.APP_ID.equals(clientData);
-	}
-
 	private void dropRegisteredClient(SocketChannel client) {
 
+        logger.debug("dropRegistered - {}", clients.getUser(client));
         clients.dropUser(client);
         sendUserListToClients();
 
-		for (ConversationPair pair : pendingPairs) {
-			if (pair.client1 == client && pair.client2 == client) {
-			    logger.debug("SAME CLIENTS");
-                pendingPairs.remove(pair);
-            }
-		}
 	}
 
 	/*public void stopServer() {
