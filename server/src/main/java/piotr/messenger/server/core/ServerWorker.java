@@ -1,11 +1,26 @@
-package piotr.messenger.server;
+package piotr.messenger.server.core;
+
+import piotr.messenger.server.util.ClientState;
+import piotr.messenger.server.util.ConversationEnd;
+import piotr.messenger.server.util.ConversationPair;
+import piotr.messenger.server.util.Clients;
+import piotr.messenger.server.util.Constants;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
-import java.nio.channels.*;
+import java.nio.channels.ServerSocketChannel;
+import java.nio.channels.SocketChannel;
+import java.nio.channels.Selector;
+import java.nio.channels.SelectionKey;
 import java.nio.channels.spi.SelectorProvider;
-import java.util.*;
+import java.nio.channels.CancelledKeyException;
+import java.util.List;
+import java.util.ArrayList;
+import java.util.LinkedList;
+import java.util.Map;
+import java.util.HashMap;
+import java.util.Iterator;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -14,7 +29,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 
-public class ServerThread implements Runnable {
+public class ServerWorker implements Runnable {
 
 
 	private String hostName;
@@ -30,14 +45,14 @@ public class ServerThread implements Runnable {
     private Clients clients;
 	private List<ConversationPair> pendingPairs;
 	private List<ConversationPair> activePairs;
-	private List<HandleConversation> handlerWorkers;
 	private List<Integer> handlersPorts;
 	private ArrayBlockingQueue<ConversationEnd> handlersEndData;
+	private int activeWorkersCounter;
 
 	private final Logger logger;
 
 
-	ServerThread() {
+    public ServerWorker() {
 		System.setProperty("sun.net.useExclusiveBind", "false");
 		this.hostName = Constants.HOST_NAME;
 		this.listenPort = Constants.PORT;
@@ -46,12 +61,12 @@ public class ServerThread implements Runnable {
         clients = new Clients();
 		pendingPairs = new ArrayList<>(); 	//or maybe LinkedList<> should be used
 		activePairs = new ArrayList<>();		//or maybe LinkedList<> should be used
-		handlerWorkers = new ArrayList<>();	//or maybe LinkedList<> should be used
 		handlersPorts = new LinkedList<>();	//or maybe ArrayList<> should be used
 		handlersEndData = new ArrayBlockingQueue<>(Constants.CONV_MAX*2);
-        logger = LoggerFactory.getLogger(ServerThread.class);
+        logger = LoggerFactory.getLogger(ServerWorker.class);
 
 		handlersExecutor = Executors.newFixedThreadPool(Constants.CONV_MAX);
+		activeWorkersCounter = 0;
 	}
 
 	@Override
@@ -65,9 +80,9 @@ public class ServerThread implements Runnable {
 				//clear leftovers from terminated conversation handler
 				while (!handlersEndData.isEmpty()) {
                     ConversationEnd data = handlersEndData.take();
-                    handlersPorts.remove(new Integer(data.portNr));
-                    activePairs.remove(data.convPair);
-                    handlerWorkers.remove(data.worker);
+                    handlersPorts.remove(new Integer(data.getPortNr()));
+                    activePairs.remove(data.getConvPair());
+                    activeWorkersCounter--;
 				}
 
 				//iterating through set of keys which have available events
@@ -221,7 +236,7 @@ public class ServerThread implements Runnable {
 					readBuffer.putInt(-30);
 					readBuffer.put((userData[2] + ";").getBytes(Constants.CHARSET));
 					readBuffer.flip();
-					send(pair.client2, readBuffer.array());
+					send(pair.getClient2(), readBuffer.array());
 					break;
 
 				case Constants.C_ACCEPT:
@@ -235,7 +250,7 @@ public class ServerThread implements Runnable {
 					pendingPairs.remove(pair);
 					activePairs.add(pair);
 
-					if (handlerWorkers.size() < Constants.CONV_MAX) {
+                    if (activeWorkersCounter < Constants.CONV_MAX) {
 
 						//create new handler and send clients connection data
 						//if limit of conversations was not reached
@@ -245,8 +260,8 @@ public class ServerThread implements Runnable {
 						}
 						handlersPorts.add(createPort);
 
-						HandleConversation worker = new HandleConversation(hostName, createPort, handlersEndData, pair);
-						handlerWorkers.add(worker);
+						ConversationWorker worker = new ConversationWorker(hostName, createPort, handlersEndData, pair);
+                        activeWorkersCounter++;
 						handlersExecutor.execute(worker);
 
 						readBuffer.clear();
@@ -254,29 +269,9 @@ public class ServerThread implements Runnable {
 						readBuffer.put((createPort + ";" + hostName + ";"
 							  + userData[1] + ";" + userData[2] + ";").getBytes(Constants.CHARSET));
 						readBuffer.flip();
-						send(pair.client1, readBuffer.array());
-						send(pair.client2, readBuffer.array());
+						send(pair.getClient1(), readBuffer.array());
+						send(pair.getClient2(), readBuffer.array());
 
-					}
-					break;
-
-				case Constants.C_CONFIRM:
-//				    logger.debug("CONFIRM");
-					int port = Integer.parseInt(userData[2]);
-
-					for (HandleConversation obj : handlerWorkers) {
-						if (obj.getHandlerSocket() == port) {
-							if (obj.isWaiting()) {
-                                //logger.debug("Connection on port '{}' confirmed, starting handler", port);
-								obj.startHandler();
-							} else if (!obj.isRunning()) {
-                                handlersPorts.remove(new Integer(port));
-								handlerWorkers.remove(obj);
-							} //else {
-                            //logger.debug("Second client confirmed, handler is up and running");
-							//}
-							break;
-						}
 					}
 			}
 		}

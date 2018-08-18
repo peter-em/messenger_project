@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<form xmlns="http://www.intellij.com/uidesigner/form/" version="1" bind-to-class="piotr.messenger.client.LoginWindow">
+<form xmlns="http://www.intellij.com/uidesigner/form/" version="1" bind-to-class="piotr.messenger.client.gui.LoginWindow">
   <grid id="27dc6" binding="loginPanel" layout-manager="GridBagLayout">
     <constraints>
       <xy x="179" y="112" width="263" height="431"/>

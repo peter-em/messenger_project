@@ -1,4 +1,6 @@
-package piotr.messenger.client;
+package piotr.messenger.client.core;
+
+import piotr.messenger.client.util.Constants;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;

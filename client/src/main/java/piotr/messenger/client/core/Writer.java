@@ -1,4 +1,6 @@
-package piotr.messenger.client;
+package piotr.messenger.client.core;
+
+import piotr.messenger.client.util.Constants;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -9,7 +11,6 @@ import java.util.concurrent.TimeUnit;
 /*
  * class used to send conversation data to the server
  * */
-
 public class Writer implements Runnable {
 
 	private ByteBuffer buffer;

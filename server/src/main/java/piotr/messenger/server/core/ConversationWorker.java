@@ -1,4 +1,8 @@
-package piotr.messenger.server;
+package piotr.messenger.server.core;
+
+import piotr.messenger.server.util.Constants;
+import piotr.messenger.server.util.ConversationEnd;
+import piotr.messenger.server.util.ConversationPair;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -8,15 +12,16 @@ import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.nio.channels.spi.SelectorProvider;
-import java.util.*;
+import java.util.Map;
+import java.util.HashMap;
+import java.util.Iterator;
 import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.TimeUnit;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 
-public class HandleConversation implements Runnable {
+public class ConversationWorker implements Runnable {
 
 	private ServerSocketChannel handler;
 	private SocketChannel client1;
@@ -27,7 +32,6 @@ public class HandleConversation implements Runnable {
 	private ByteBuffer readBuffer;
 	private int clientCount;
 	private volatile boolean isRunning;
-	private volatile boolean isWaiting;
 //	private Map<SocketChannel, List<ByteBuffer>> pendingData;
     private Map<SocketChannel, ByteBuffer> pendingData;
 	private ArrayBlockingQueue<ConversationEnd> handlersEndData;
@@ -35,10 +39,10 @@ public class HandleConversation implements Runnable {
 	private final Logger logger;
 	private int timer;
 
-	HandleConversation(String handlerAddress, int handlerPort,
-									  ArrayBlockingQueue<ConversationEnd> queue, ConversationPair pair) {
+	ConversationWorker(String handlerAddress, int handlerPort,
+                       ArrayBlockingQueue<ConversationEnd> queue, ConversationPair pair) {
 
-        logger = LoggerFactory.getLogger(HandleConversation.class);
+        logger = LoggerFactory.getLogger(ConversationWorker.class);
 		pendingData = new HashMap<>();
 		this.handlerAddress = handlerAddress;
 		this.handlerPort = handlerPort;
@@ -48,7 +52,6 @@ public class HandleConversation implements Runnable {
 		clientCount = 0;
 		timer = 0;
 		isRunning = false;
-		isWaiting = true;
 		openSocket();
 	}
 
@@ -56,22 +59,28 @@ public class HandleConversation implements Runnable {
 	public void run() {
 
 
+        try {
+            while (timer < 1200) {
+                convSelector.select(50);
+                Iterator<SelectionKey> selectedKeys;
+                selectedKeys = convSelector.selectedKeys().iterator();
+                if (selectedKeys.hasNext()) {
+                    SelectionKey key = selectedKeys.next();
+                    selectedKeys.remove();
+                    if (key.isAcceptable()) {
+                        timer = 1200;
+                        accept(key);
+                    }
+                }
+                timer++;
+            }
+        } catch (IOException ioEx) {
+            logger.error("Problem occured while waiting for clients - "
+                    + ioEx.getMessage());
+            isRunning = false;
+            timer = 1200;
+        }
 
-		try {
-			while (isWaiting && timer < 1200) {
-				TimeUnit.MILLISECONDS.sleep(50);
-				timer++;
-			}
-		} catch (InterruptedException itrEx) {
-			System.out.println(itrEx.getMessage());
-		}
-		if (timer == 1200) {
-			isRunning = false;
-			//isWaiting = false;
-		} else {
-			isRunning = true;
-			isWaiting = false;
-		}
 
 		while (isRunning) {
 			try {
@@ -105,7 +114,7 @@ public class HandleConversation implements Runnable {
 
         logger.info("Closing conversation handler on port {}.", handlerPort);
 		closeSocket();
-		handlersEndData.add(new ConversationEnd(handlerPort, convPair, this));
+		handlersEndData.add(new ConversationEnd(handlerPort, convPair/*, this*/));
 	}
 
 	private void accept(SelectionKey key) throws IOException {
@@ -229,17 +238,5 @@ public class HandleConversation implements Runnable {
 			System.err.println(ioEx.getMessage());
 		}
 	}
-
-	boolean isRunning() { return isRunning; }
-
-	boolean isWaiting() { return isWaiting; }
-
-	void startHandler() {
-		if (isWaiting) {
-			isWaiting = false;
-		}
-	}
-
-	int getHandlerSocket() { return handlerPort; }
 }
 

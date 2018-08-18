@@ -1,22 +1,22 @@
-package piotr.messenger.server;
+package piotr.messenger.server.util;
 
 public class ClientState {
 
-	static final int WAITFORUID = 1;
-	static final int SERVECLIENT = 3;
+    public static final int WAITFORUID = 1;
+    public static final int SERVECLIENT = 3;
 	//public static final int HASCONV = 4;
 
 	private int state;
 
-	ClientState() {
+    public ClientState() {
         state = WAITFORUID;
 	}
 
-	int getState() {
+    public int getState() {
 		return state;
 	}
 
-	void setState(int state) {
+    public void setState(int state) {
 		this.state = state;
 	}
 

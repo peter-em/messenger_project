@@ -1,38 +1,53 @@
-package piotr.messenger.client;
+package piotr.messenger.client.gui;
+
+import piotr.messenger.client.util.Constants;
+import piotr.messenger.client.core.WorkerThread;
 
 import javax.swing.*;
-import javax.swing.event.*;
-import java.awt.*;
-import java.awt.event.*;
+import javax.swing.event.ChangeListener;
+import javax.swing.event.ChangeEvent;
+import javax.swing.event.ListSelectionEvent;
+import java.awt.Dimension;
+import java.awt.GraphicsEnvironment;
+import java.awt.Point;
+import java.awt.event.WindowListener;
+import java.awt.event.WindowEvent;
+import java.awt.event.KeyListener;
+import java.awt.event.KeyEvent;
+import java.awt.event.ActionListener;
+import java.awt.event.ActionEvent;
+import java.awt.event.InputEvent;
 import java.text.SimpleDateFormat;
-import java.util.*;
+import java.util.Map;
+import java.util.HashMap;
+import java.util.Calendar;
 import java.util.concurrent.ArrayBlockingQueue;
 
 
-public class ClientGUI implements
+public class MainWindow implements
         ActionListener, WindowListener, ChangeListener, KeyListener {
 
 
-    JFrame appFrame;
-	JPanel mainPanel;
-	JPanel centerPanel;
-	JPanel southPanel;
-	JToolBar buttonsMenuBar;
-	JButton closeTab;
-	JTabbedPane appPages;
-	JList<Object> usersList;
-	JTextField chooseUser;
-	JButton sendRequest;
-	JLabel ownerName;
-	JLabel usersCount;
+    private JFrame appFrame;
+    private JPanel mainPanel;
+    private JPanel centerPanel;
+    private JPanel southPanel;
+    private JToolBar buttonsMenuBar;
+    private JButton closeTab;
+    private JTabbedPane appPages;
+    private JList<Object> usersList;
+    private JTextField chooseUser;
+    private JButton sendRequest;
+    private JLabel ownerName;
+    private JLabel usersCount;
 
-	DefaultListModel<Object> defListModel;
-    ArrayBlockingQueue<String> mainDataQueue;
-	Map<String, JTextArea> printAreas;
-	Map<String, JTextArea> writeAreas;
+    private DefaultListModel<Object> defListModel;
+    private ArrayBlockingQueue<String> mainDataQueue;
+    private Map<String, JTextArea> printAreas;
+    private Map<String, JTextArea> writeAreas;
 
 
-	ClientGUI() {
+	public MainWindow() {
 
 	    appFrame = new JFrame();
         printAreas = new HashMap<>();
@@ -52,7 +67,7 @@ public class ClientGUI implements
         appFrame.setTitle(Constants.APP_NAME);
         appFrame.setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE);
 
-		SwingUtilities.updateComponentTreeUI(mainPanel);
+//		SwingUtilities.updateComponentTreeUI(mainPanel);
 
         appFrame.setMinimumSize(new Dimension(290, 500));
         appFrame.setPreferredSize(new Dimension(300, 500));
@@ -175,7 +190,7 @@ public class ClientGUI implements
         appFrame.setLocation(dx, dy);
     }
 
-    void printMessage(String sender, String receiver, String message) {
+    public void printMessage(String sender, String receiver, String message) {
 
         //display message in proper conversation tab
         Calendar calendar = Calendar.getInstance();
@@ -218,5 +233,46 @@ public class ClientGUI implements
     @Override
     public void keyReleased(KeyEvent e) {}
     // ---------- HANDLE KEY PRESSES ----------- //
+
+    // SETTERS AND GETTERS
+    public JFrame getAppFrame() {
+        return appFrame;
+    }
+
+    public JPanel getMainPanel() {
+        return mainPanel;
+    }
+
+    public JTabbedPane getAppPages() {
+        return appPages;
+    }
+
+    public JLabel getOwnerName() {
+        return ownerName;
+    }
+
+    public JLabel getUsersCount() {
+        return usersCount;
+    }
+
+    public DefaultListModel<Object> getDefListModel() {
+        return defListModel;
+    }
+
+    public ArrayBlockingQueue<String> getMainDataQueue() {
+        return mainDataQueue;
+    }
+
+    public void setMainDataQueue(ArrayBlockingQueue<String> queue) {
+	    mainDataQueue = queue;
+    }
+
+    public Map<String, JTextArea> getPrintAreas() {
+        return printAreas;
+    }
+
+    public Map<String, JTextArea> getWriteAreas() {
+        return writeAreas;
+    }
 }
 

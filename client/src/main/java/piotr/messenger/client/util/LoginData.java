@@ -1,4 +1,4 @@
-package piotr.messenger.client;
+package piotr.messenger.client.util;
 
 public class LoginData {
     private String login;
@@ -9,11 +9,11 @@ public class LoginData {
         this.password = password;
     }*/
 
-    String getLogin() {
+    public String getLogin() {
         return login;
     }
 
-    void setLogin(String login) {
+    public void setLogin(String login) {
         this.login = login;
     }
 
@@ -21,7 +21,7 @@ public class LoginData {
         return password;
     }
 
-    void setPassword(String password) {
+    public void setPassword(String password) {
         this.password = password;
     }
 }

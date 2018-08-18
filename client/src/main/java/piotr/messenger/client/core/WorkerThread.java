@@ -1,4 +1,10 @@
-package piotr.messenger.client;
+package piotr.messenger.client.core;
+
+import piotr.messenger.client.util.Constants;
+import piotr.messenger.client.util.DialogsHandler;
+import piotr.messenger.client.util.LoginData;
+import piotr.messenger.client.gui.MainWindow;
+import piotr.messenger.client.gui.LoginWindow;
 
 import javax.swing.*;
 import java.awt.*;
@@ -6,8 +12,12 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
-import java.util.*;
+import java.util.Map;
+import java.util.LinkedList;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Collections;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
@@ -25,17 +35,17 @@ public class WorkerThread implements Runnable {
     private List<String> convUsers;
     private DialogsHandler dialogs;
     private List<String> clientsNames;
-    private ClientGUI appManager;
+    private MainWindow appManager;
     private String userName;
     private Map<String, ArrayBlockingQueue<String>> readThreads;
     private Map<String, ArrayBlockingQueue<String>> writeThreads;
 
-    WorkerThread(ClientGUI appManager) {
+    public WorkerThread(MainWindow appManager) {
         this.appManager = appManager;
-        logger = LoggerFactory.getLogger(ClientGUI.class);
+        logger = LoggerFactory.getLogger(MainWindow.class);
         awaitingConv = false;
         convUsers = new LinkedList<>();
-        dialogs = new DialogsHandler(appManager.mainPanel);
+        dialogs = new DialogsHandler(appManager.getMainPanel());
         clientsNames = new LinkedList<>();
         readThreads = new HashMap<>();
 		writeThreads = new HashMap<>();
@@ -79,15 +89,19 @@ public class WorkerThread implements Runnable {
             }
             Collections.sort(clientsNames);
 
-            appManager.defListModel.removeAllElements();
+//            appManager.getDefListModel().removeAllElements();
+            DefaultListModel<Object> model = appManager.getDefListModel();
+            model.removeAllElements();
             for (String str : clientsNames) {
-                appManager.defListModel.addElement(str);
+//                appManager.getDefListModel().addElement(str);
+                model.addElement(str);
             }
-            appManager.usersCount.setText("Active users: " + appManager.defListModel.size());
+//            appManager.getUsersCount().setText("Active users: " + appManager.getDefListModel().size());
+            appManager.getUsersCount().setText("Active users: " + model.size());
 
         } else if (response == -10) {
             //another user wants to talk
-            appManager.mainDataQueue.add(dialogs.convInvite(users[0]));
+            appManager.getMainDataQueue().add(dialogs.convInvite(users[0]));
             awaitingConv = true;
             convUsers.add(users[0]);
 
@@ -105,12 +119,6 @@ public class WorkerThread implements Runnable {
             //connectData contains - [0]: port number, [1]: server address,
             //[2] and [3]: logins of users starting conversation
             String startConvUser = connectData[2].equals(userName)?connectData[3]:connectData[2];
-
-            //confirm connection
-            buffer.clear();
-            buffer.put(("c;" + userName + ";" + connectData[0] + ";").getBytes(Constants.CHARSET));
-            buffer.flip();
-            sendToServer(buffer);
 
             if (doConnect(connectData[1], Integer.parseInt(connectData[0]), startConvUser)) {
                 createConvPage(startConvUser);
@@ -158,14 +166,14 @@ public class WorkerThread implements Runnable {
 
 
 
-        appManager.appPages.addTab(convUser, panel);
-        appManager.writeAreas.put(convUser, writeArea);
-        appManager.printAreas.put(convUser, printArea);
+        appManager.getAppPages().addTab(convUser, panel);
+        appManager.getWriteAreas().put(convUser, writeArea);
+        appManager.getPrintAreas().put(convUser, printArea);
 
-        if (appManager.appPages.getSelectedIndex() == 0)
-            for (int i = 1; i < appManager.appPages.getTabCount(); i++) {
-                if (appManager.appPages.getTitleAt(i).equals(convUser)) {
-                    appManager.appPages.setSelectedIndex(i);
+        if (appManager.getAppPages().getSelectedIndex() == 0)
+            for (int i = 1; i < appManager.getAppPages().getTabCount(); i++) {
+                if (appManager.getAppPages().getTitleAt(i).equals(convUser)) {
+                    appManager.getAppPages().setSelectedIndex(i);
                     break;
                 }
             }
@@ -243,8 +251,8 @@ public class WorkerThread implements Runnable {
 
                 LoginData loginData = loginWindow.getLoginData();
                 if (loginData == null) {
-                    appManager.appFrame.setVisible(false);
-                    appManager.appFrame.dispose();
+                    appManager.getAppFrame().setVisible(false);
+                    appManager.getAppFrame().dispose();
                     return;
                 }
                 userName = loginData.getLogin();
@@ -270,9 +278,9 @@ public class WorkerThread implements Runnable {
 
 
             //reveal window app if verification was succesful
-            appManager.mainDataQueue = new ArrayBlockingQueue<>(Constants.BLOCKING_SIZE);
-            appManager.ownerName.setText(userName);
-            appManager.appFrame.setVisible(true);
+            appManager.setMainDataQueue(new ArrayBlockingQueue<>(Constants.BLOCKING_SIZE));
+            appManager.getOwnerName().setText(userName);
+            appManager.getAppFrame().setVisible(true);
             Thread.currentThread().setName("Client_" + userName);
 
             boolean sendOK;
@@ -294,10 +302,10 @@ public class WorkerThread implements Runnable {
                 }
 
 
-                if (!appManager.mainDataQueue.isEmpty()) {
+                if (!appManager.getMainDataQueue().isEmpty()) {
 
                     try {
-                        input = appManager.mainDataQueue.take();
+                        input = appManager.getMainDataQueue().take();
                         sendOK = true;
                     } catch (InterruptedException bqEx) {
                         logger.error("Main queue ({})", bqEx.getMessage());
@@ -360,9 +368,9 @@ public class WorkerThread implements Runnable {
                         //special case, due to inability to send empty string,
                         //only conv reader can input it to signal EoC
                         if (input.length() == 0) {
-                            for (int i = 1; i < appManager.appPages.getTabCount(); i++) {
-                                if (appManager.appPages.getTitleAt(i).equals(convKey)) {
-                                    appManager.appPages.removeTabAt(i);
+                            for (int i = 1; i < appManager.getAppPages().getTabCount(); i++) {
+                                if (appManager.getAppPages().getTitleAt(i).equals(convKey)) {
+                                    appManager.getAppPages().removeTabAt(i);
                                     break;
                                 }
                             }
@@ -401,8 +409,8 @@ public class WorkerThread implements Runnable {
     private void removeMapings(String convUser) {
         writeThreads.remove(convUser);
         readThreads.remove(convUser);
-        appManager.writeAreas.remove(convUser);
-        appManager.printAreas.remove(convUser);
+        appManager.getWriteAreas().remove(convUser);
+        appManager.getWriteAreas().remove(convUser);
     }
 
     private void performSafeClose() {
@@ -410,8 +418,8 @@ public class WorkerThread implements Runnable {
         for (ArrayBlockingQueue<String> queue : writeThreads.values()) {
             queue.add("");
         }
-        appManager.appFrame.setVisible(false);
-        appManager.appFrame.dispose();
+        appManager.getAppFrame().setVisible(false);
+        appManager.getAppFrame().dispose();
     }
 
 }

@@ -1,4 +1,7 @@
-package piotr.messenger.client;
+package piotr.messenger.client.gui;
+
+import piotr.messenger.client.util.Constants;
+import piotr.messenger.client.util.LoginData;
 
 import javax.swing.*;
 import javax.swing.text.SimpleAttributeSet;
@@ -25,38 +28,39 @@ public class LoginWindow implements ActionListener {
     private volatile boolean dataReady = false;
 
 
-    LoginWindow() {
+    public LoginWindow() {
 
         frame = new JFrame("LOGIN WINDOW");
-        frame.setContentPane(loginPanel);
+
         frame.setMinimumSize(new Dimension(240, 340));
         frame.setResizable(false);
         frame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
         centerWindow();
 
         initComponents();
+        frame.setContentPane(loginPanel);
 
     }
 
-    void dataInvalid(String reason) {
+    public void dataInvalid(String reason) {
         dataReady = false;
         invalidLogin.setText(reason);
         invalidLogin.setVisible(true);
     }
 
-    LoginData getLoginData() {
+    public LoginData getLoginData() {
         return loginData;
     }
 
-    boolean isLoginDataReady() {
+    public boolean isLoginDataReady() {
         return dataReady;
     }
 
-    void showWindow() {
+    public void showWindow() {
         frame.setVisible(true);
     }
 
-    void disposeWindow() {
+    public void disposeWindow() {
         frame.setVisible(false);
         frame.dispose();
     }
