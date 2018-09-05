@@ -1,7 +1,7 @@
-package piotr.messenger.client.gui;
+package piotr.messenger.springclient.gui;
 
-import piotr.messenger.client.util.Constants;
-import piotr.messenger.client.util.LoginData;
+import piotr.messenger.springclient.util.Constants;
+import piotr.messenger.springclient.util.LoginData;
 
 import javax.swing.*;
 import javax.swing.text.SimpleAttributeSet;
@@ -37,8 +37,8 @@ public class LoginWindow implements ActionListener {
         frame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
 
 
-        frame.setContentPane(loginPanel);
         initComponents();
+        frame.setContentPane(loginPanel);
 
         centerWindow();
 
