@@ -52,6 +52,7 @@ public class MainWindow implements
 	    appFrame = new JFrame();
         printAreas = new HashMap<>();
         writeAreas = new HashMap<>();
+//        mainPanel = new JPanel();
 
         WorkerThread worker = new WorkerThread(this);
 

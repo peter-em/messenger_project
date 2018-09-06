@@ -35,10 +35,12 @@ public class LoginWindow implements ActionListener {
         frame.setMinimumSize(new Dimension(240, 340));
         frame.setResizable(false);
         frame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
-        centerWindow();
 
-        initComponents();
+
         frame.setContentPane(loginPanel);
+        initComponents();
+
+        centerWindow();
 
     }
 
