@@ -4,6 +4,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 import piotr.messenger.springclient.api.Panel;
+import piotr.messenger.springclient.util.Constants;
 
 import javax.swing.BorderFactory;
 import javax.swing.JPanel;
@@ -44,6 +45,8 @@ public class SouthPanel implements Panel {
     public JPanel init() {
         JPanel panel = new JPanel(layout);
         panel.setBorder(BorderFactory.createLineBorder(new Color(0, 74, 12)));
+        panel.setPreferredSize(new Dimension(-1,28));
+        panel.setBackground(Constants.TEXT_AREA_COLOR);
 
         GridBagConstraints c = new GridBagConstraints();
 

@@ -4,7 +4,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 
-import javax.swing.*;
+import javax.swing.JPanel;
+import javax.swing.JTabbedPane;
+import javax.swing.JOptionPane;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.util.concurrent.ArrayBlockingQueue;
@@ -12,15 +14,9 @@ import java.util.concurrent.ArrayBlockingQueue;
 @Component
 public class AppWindowListener extends WindowAdapter {
 
-//    private JFrame appFrame;
     private JTabbedPane appTabbs;
     private ArrayBlockingQueue<String> mainDataQueue;
     private JPanel mainPanel;
-
-//    @Autowired
-//    public void setAppFrame(@Qualifier("mainFrame") JFrame appFrame) {
-//        this.appFrame = appFrame;
-//    }
 
     @Autowired
     public void setMainPanel(@Qualifier("mainPanel") JPanel mainPanel) {
@@ -28,7 +24,7 @@ public class AppWindowListener extends WindowAdapter {
     }
 
     @Autowired
-    public void setAppTabbs(JTabbedPane appTabbs) {
+    public void setAppTabbsWindow(JTabbedPane appTabbs) {
         this.appTabbs = appTabbs;
     }
 
@@ -42,8 +38,11 @@ public class AppWindowListener extends WindowAdapter {
     @Override
     public void windowClosing(WindowEvent we) {
 
+        if (appTabbs == null)
+            return;
         int nOption;
         int tabCount = appTabbs.getTabCount();
+
         if (tabCount > 1) {
 
             nOption = JOptionPane.showConfirmDialog(/*appFrame.getContentPane()*/mainPanel, "You have open conversations: " +
@@ -55,8 +54,6 @@ public class AppWindowListener extends WindowAdapter {
 
         }
         mainDataQueue.add("q;");
-//        appFrame.setVisible(false);
-//        appFrame.dispose();
     }
     //------------ METHODS LISTENING FOR APPLICATION WINDOW CHANGES - END ------------//
 

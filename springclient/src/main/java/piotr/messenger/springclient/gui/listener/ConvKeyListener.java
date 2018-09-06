@@ -5,7 +5,8 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 import piotr.messenger.springclient.core.WorkerThread;
 
-import javax.swing.*;
+import javax.swing.JTabbedPane;
+import javax.swing.JTextArea;
 import java.awt.event.InputEvent;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
@@ -17,16 +18,10 @@ import java.util.concurrent.ArrayBlockingQueue;
 @Qualifier("convKeyListener")
 public class ConvKeyListener extends KeyAdapter {
 
-//    private WorkerThread worker;
     private Map<String, JTextArea> writeAreas;
     private Map<String, JTextArea> printAreas;
     private ArrayBlockingQueue<String> mainDataQueue;
     private JTabbedPane appTabbs;
-
-//    @Autowired
-//    public void setWorker(WorkerThread worker) {
-//        this.worker = worker;
-//    }
 
 
     @Autowired
@@ -45,7 +40,7 @@ public class ConvKeyListener extends KeyAdapter {
     }
 
     @Autowired
-    public void setAppTabbs(JTabbedPane appTabbs) {
+    public void setAppTabbsKey(JTabbedPane appTabbs) {
         this.appTabbs = appTabbs;
     }
 
@@ -59,7 +54,6 @@ public class ConvKeyListener extends KeyAdapter {
             int idx = appTabbs.getSelectedIndex();
             if (idx > 0) {
                 String tabName = appTabbs.getTitleAt(idx);
-//                JTextArea tmpWrite = worker.getWriteAreas().get(tabName);
                 JTextArea tmpWrite = writeAreas.get(tabName);
                 if (tmpWrite.getText().length() != 0) {
 
@@ -68,9 +62,7 @@ public class ConvKeyListener extends KeyAdapter {
                         return;
                     }
 
-//                    mainDataQueue.add(tabName + ";" + tmpWrite.getText());
-                    mainDataQueue.add(tabName + ";" + tmpWrite.getToolTipText());
-//                    worker.printMessage("me", tabName, tmpWrite.getText());
+                    mainDataQueue.add(tabName + ";" + tmpWrite.getText());
                     WorkerThread.printMessage("me", tabName, tmpWrite.getText(), printAreas.get(tabName));
                     tmpWrite.setText("");
                 }

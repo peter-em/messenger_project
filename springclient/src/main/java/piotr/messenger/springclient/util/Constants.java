@@ -35,6 +35,7 @@ public class Constants {
     public static final Color DATA_ERROR = new Color(187,0,10);
     public static final Color DARK_BLUE = new Color(0,0,240);
     public static final Color BLACK = new Color(0,0,0);
+    public static final Color LIST_ELEMENT = new Color(0,74,12);
 
     public static final Font AREA_FONT = new Font("Consolas", Font.PLAIN, 13);
 

@@ -2,6 +2,7 @@ package piotr.messenger.springclient.config;
 
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.*;
+import piotr.messenger.springclient.gui.listener.ConvKeyListener;
 import piotr.messenger.springclient.gui.listener.button.SendRequestButtonListener;
 import piotr.messenger.springclient.gui.panel.CenterPanel;
 import piotr.messenger.springclient.gui.panel.MainPanel;
@@ -24,15 +25,12 @@ public class MainWindowConfig {
 
     @Bean(name="mainFrame")
     public JFrame getFrame(@Qualifier("mainPanel") JPanel mainPanel,
-                           WindowListener windowListener,
-                           @Qualifier("convKeyListener") KeyListener keyListener) {
+                           WindowListener windowListener) {
         JFrame appFrame = new JFrame();
         appFrame.setTitle(Constants.APP_NAME);
         appFrame.setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE);
 
-//        appFrame.setMinimumSize(new Dimension(290, 500));
         appFrame.setPreferredSize(new Dimension(300, 500));
-//        appFrame.setMaximumSize(new Dimension(360, 650));
         appFrame.setResizable(false);
 
         appFrame.setContentPane(mainPanel);
@@ -44,7 +42,6 @@ public class MainWindowConfig {
         SwingUtilities.updateComponentTreeUI(mainPanel);
         appFrame.pack();
 
-        appFrame.addKeyListener(keyListener);
         appFrame.addWindowListener(windowListener);
         return appFrame;
     }
@@ -85,7 +82,6 @@ public class MainWindowConfig {
 
     @Bean
     public JTabbedPane getTabbedPane(@Qualifier("centerPanel") JPanel centerPanel,
-                                     /*ChangeListener listener*/
                                      @Qualifier("writeAreas") Map<String, JTextArea> writeAreas) {
         JTabbedPane pane = new JTabbedPane();
         pane.setTabLayoutPolicy(JTabbedPane.WRAP_TAB_LAYOUT);
@@ -94,18 +90,12 @@ public class MainWindowConfig {
 
         pane.addChangeListener((ChangeEvent event) -> {
 
-//            @Override
-//            public void stateChanged(ChangeEvent e) {
-
                 int idx = pane.getSelectedIndex();
                 if (idx > 0) {
                     String tabName = pane.getTitleAt(idx);
                     writeAreas.get(tabName).requestFocus();
                 }
-
-//            }
         });
-//        pane.addChangeListener(listener);
         return pane;
     }
 
@@ -126,6 +116,7 @@ public class MainWindowConfig {
         users.setLayoutOrientation(JList.VERTICAL);
         users.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         users.setModel(defListModel);
+        users.setForeground(Constants.LIST_ELEMENT);
 
         users.getSelectionModel().addListSelectionListener((ListSelectionEvent event) -> {
             ListSelectionModel lsm = (ListSelectionModel) event.getSource();
@@ -140,7 +131,6 @@ public class MainWindowConfig {
             }
         });
 
-//        users.setVisibleRowCount(10);
         return users;
     }
 
