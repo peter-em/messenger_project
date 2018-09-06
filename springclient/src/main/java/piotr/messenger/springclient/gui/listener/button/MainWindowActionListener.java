@@ -6,7 +6,7 @@ import java.awt.event.ActionListener;
 import java.util.concurrent.ArrayBlockingQueue;
 
 // HANDLE CLICKABLE BUTTONS
-public abstract class ButtonListener implements ActionListener{
+public abstract class MainWindowActionListener implements ActionListener{
 
     ArrayBlockingQueue<String> mainDataQueue;
 

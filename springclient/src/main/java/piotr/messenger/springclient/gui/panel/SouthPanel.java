@@ -2,6 +2,7 @@ package piotr.messenger.springclient.gui.panel;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.stereotype.Component;
 import piotr.messenger.springclient.api.Panel;
 
 import javax.swing.BorderFactory;
@@ -16,7 +17,7 @@ import java.awt.Insets;
 import java.awt.Color;
 
 
-@org.springframework.stereotype.Component
+@Component
 public class SouthPanel implements Panel {
 
     private LayoutManager layout;

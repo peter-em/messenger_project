@@ -1,6 +1,7 @@
 package piotr.messenger.springclient.gui.listener;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 
 import javax.swing.*;
@@ -11,13 +12,19 @@ import java.util.concurrent.ArrayBlockingQueue;
 @Component
 public class AppWindowListener extends WindowAdapter {
 
-    private JFrame appFrame;
+//    private JFrame appFrame;
     private JTabbedPane appTabbs;
     private ArrayBlockingQueue<String> mainDataQueue;
+    private JPanel mainPanel;
+
+//    @Autowired
+//    public void setAppFrame(@Qualifier("mainFrame") JFrame appFrame) {
+//        this.appFrame = appFrame;
+//    }
 
     @Autowired
-    public void setAppFrame(JFrame appFrame) {
-        this.appFrame = appFrame;
+    public void setMainPanel(@Qualifier("mainPanel") JPanel mainPanel) {
+        this.mainPanel = mainPanel;
     }
 
     @Autowired
@@ -39,7 +46,7 @@ public class AppWindowListener extends WindowAdapter {
         int tabCount = appTabbs.getTabCount();
         if (tabCount > 1) {
 
-            nOption = JOptionPane.showConfirmDialog(appFrame.getContentPane(), "You have open conversations: " +
+            nOption = JOptionPane.showConfirmDialog(/*appFrame.getContentPane()*/mainPanel, "You have open conversations: " +
                             (tabCount - 1) + "\nClose anyway?", "Closing Programm",
                     JOptionPane.OK_CANCEL_OPTION);
 
@@ -48,7 +55,7 @@ public class AppWindowListener extends WindowAdapter {
 
         }
         mainDataQueue.add("q;");
-        appFrame.setVisible(false);
+//        appFrame.setVisible(false);
 //        appFrame.dispose();
     }
     //------------ METHODS LISTENING FOR APPLICATION WINDOW CHANGES - END ------------//

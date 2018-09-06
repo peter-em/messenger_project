@@ -2,6 +2,7 @@ package piotr.messenger.springclient.gui.panel;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.stereotype.Component;
 import piotr.messenger.springclient.api.Panel;
 
 import javax.swing.JScrollPane;
@@ -13,7 +14,7 @@ import java.awt.LayoutManager;
 import java.awt.Dimension;
 import java.awt.Insets;
 
-@org.springframework.stereotype.Component
+@Component
 public class CenterPanel implements Panel {
 
     private LayoutManager layout;
@@ -33,7 +34,7 @@ public class CenterPanel implements Panel {
     }
 
     @Autowired
-    public void setChooseUser(JTextField chooseUser) {
+    public void setChooseUser(@Qualifier("chooseUser") JTextField chooseUser) {
         this.chooseUser = chooseUser;
     }
 

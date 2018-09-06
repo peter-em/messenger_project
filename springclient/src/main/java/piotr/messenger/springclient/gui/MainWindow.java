@@ -20,7 +20,7 @@ public class MainWindow {
 
     private JFrame appFrame;
     private JButton closeTab;
-    private JTabbedPane appPages;
+    private JTabbedPane appTabbs;
     private JTextField chooseUser;
     private JLabel ownerName;
     private JLabel usersCount;
@@ -29,28 +29,27 @@ public class MainWindow {
 	public MainWindow() {
 
         AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext(AutoConfig.class);
-        appFrame = context.getBean(JFrame.class);
+        appFrame = context.getBean("mainFrame", JFrame.class);
         ownerName = context.getBean("ownerName", JLabel.class);
         usersCount = context.getBean("usersCount", JLabel.class);
+        appTabbs = context.getBean(JTabbedPane.class);
 
         WorkerThread worker = context.getBean(WorkerThread.class);
         worker.init(this);
 		Thread task = new Thread(worker);
 		task.start();
 
-        centerFrame();
+        centerWindow(appFrame);
 
 	}
 
-
     //centering app on the screen
-    private void centerFrame() {
-        Dimension windowSize = appFrame.getPreferredSize();
-        GraphicsEnvironment ge = GraphicsEnvironment.getLocalGraphicsEnvironment();
-        Point centerPoint = ge.getCenterPoint();
-        int dx = centerPoint.x - windowSize.width/2;
-        int dy = centerPoint.y - windowSize.height/2;
-        appFrame.setLocation(dx, dy);
+    public static void centerWindow(JFrame window) {
+        int width = window.getContentPane().getMinimumSize().width;
+        int height = window.getContentPane().getMinimumSize().height;
+        GraphicsEnvironment gE = GraphicsEnvironment.getLocalGraphicsEnvironment();
+        Point point = gE.getCenterPoint();
+        window.setLocation(point.x - width/2, point.y - height);
     }
 
 
@@ -64,7 +63,7 @@ public class MainWindow {
     }
 
     public JTabbedPane getAppPages() {
-        return appPages;
+        return appTabbs;
     }
 
     public JLabel getOwnerName() {

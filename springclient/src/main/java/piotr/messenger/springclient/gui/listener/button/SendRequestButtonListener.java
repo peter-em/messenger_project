@@ -1,18 +1,19 @@
 package piotr.messenger.springclient.gui.listener.button;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 
 import javax.swing.*;
 import java.awt.event.ActionEvent;
 
 @Component
-public class SendButtonListener extends ButtonListener {
+public class SendRequestButtonListener extends MainWindowActionListener {
 
     private JTextField chooseUser;
 
     @Autowired
-    public void setChooseUser(JTextField chooseUser) {
+    public void setChooseUser(@Qualifier("chooseUser") JTextField chooseUser) {
         this.chooseUser = chooseUser;
     }
 

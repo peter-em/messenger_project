@@ -2,6 +2,7 @@ package piotr.messenger.springclient.gui.panel;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.stereotype.Component;
 import piotr.messenger.springclient.api.Panel;
 
 import javax.swing.JPanel;
@@ -10,7 +11,7 @@ import javax.swing.JTabbedPane;
 import java.awt.BorderLayout;
 import java.awt.LayoutManager;
 
-@org.springframework.stereotype.Component
+@Component
 public class MainPanel implements Panel {
 
     private LayoutManager layout;
@@ -47,6 +48,8 @@ public class MainPanel implements Panel {
         panel.add(toolBar, BorderLayout.PAGE_START);
         panel.add(tabbedPane, BorderLayout.CENTER);
         panel.add(southPanel, BorderLayout.PAGE_END);
+
+
 
         return panel;
     }

@@ -2,17 +2,18 @@ package piotr.messenger.springclient.config;
 
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.*;
+import piotr.messenger.springclient.gui.listener.button.SendRequestButtonListener;
 import piotr.messenger.springclient.gui.panel.CenterPanel;
 import piotr.messenger.springclient.gui.panel.MainPanel;
 import piotr.messenger.springclient.gui.panel.SouthPanel;
-import piotr.messenger.springclient.gui.listener.button.CloseButtonListener;
-import piotr.messenger.springclient.gui.listener.button.SendButtonListener;
+import piotr.messenger.springclient.gui.listener.button.CloseTabButtonListener;
 import piotr.messenger.springclient.util.Constants;
 
 import javax.swing.*;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ListSelectionEvent;
 import java.awt.*;
+import java.awt.event.KeyListener;
 import java.awt.event.WindowListener;
 import java.util.Map;
 import java.util.HashMap;
@@ -21,9 +22,10 @@ import java.util.concurrent.ArrayBlockingQueue;
 @Configuration
 public class MainWindowConfig {
 
-    @Bean
+    @Bean(name="mainFrame")
     public JFrame getFrame(@Qualifier("mainPanel") JPanel mainPanel,
-                           WindowListener windowListener) {
+                           WindowListener windowListener,
+                           @Qualifier("convKeyListener") KeyListener keyListener) {
         JFrame appFrame = new JFrame();
         appFrame.setTitle(Constants.APP_NAME);
         appFrame.setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE);
@@ -42,6 +44,7 @@ public class MainWindowConfig {
         SwingUtilities.updateComponentTreeUI(mainPanel);
         appFrame.pack();
 
+        appFrame.addKeyListener(keyListener);
         appFrame.addWindowListener(windowListener);
         return appFrame;
     }
@@ -114,7 +117,7 @@ public class MainWindowConfig {
     }
 
     @Bean
-    public JList<String> getUsersList(JTextField chooseUser,
+    public JList<String> getUsersList(@Qualifier("chooseUser") JTextField chooseUser,
                                       DefaultListModel<String> defListModel) {
         JList<String> users = new JList<>();
         users.setFixedCellHeight(20);
@@ -142,7 +145,8 @@ public class MainWindowConfig {
     }
 
     @Bean
-    public JTextField getTextField() {
+    @Qualifier("chooseUser")
+    public JTextField getChooseUserField() {
         JTextField field = new JTextField();
         field.setFont(new Font("Consolas", Font.PLAIN, 14));
         field.setPreferredSize(new Dimension(-1, 24));
@@ -152,7 +156,7 @@ public class MainWindowConfig {
 
     @Bean
     @Qualifier("closeTabButton")
-    public JButton getCloseButton(CloseButtonListener listener) {
+    public JButton getCloseButton(CloseTabButtonListener listener) {
         JButton button = new JButton("Close Tab");
         button.setBorderPainted(true);
         button.setFocusable(false);
@@ -170,7 +174,7 @@ public class MainWindowConfig {
 
     @Bean
     @Qualifier("sendRequestButton")
-    public JButton getSendButton(SendButtonListener listener) {
+    public JButton getSendButton(SendRequestButtonListener listener) {
         JButton button = new JButton("Send");
         button.setOpaque(true);
         button.setSelected(false);
@@ -219,7 +223,6 @@ public class MainWindowConfig {
     public ArrayBlockingQueue<String> getQueue() {
         return new ArrayBlockingQueue<>(Constants.BLOCKING_SIZE);
     }
-
 
     @Bean
     @Qualifier("printAreas")

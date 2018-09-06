@@ -44,6 +44,7 @@ public class WorkerThread implements Runnable {
     private DialogsHandler dialogs;
     private List<String> clientsNames;
     private MainWindow appManager;
+    private LoginWindow loginWindow;
     private String userName;
     private Map<String, ArrayBlockingQueue<String>> readThreads;
     private Map<String, ArrayBlockingQueue<String>> writeThreads;
@@ -150,9 +151,9 @@ public class WorkerThread implements Runnable {
     private void createConvPage(String convUser) {
 
         JTextArea printArea = new JTextArea();
-        printArea.setFont(new Font("Consolas", Font.PLAIN, 13));
+        printArea.setFont(Constants.AREA_FONT);
         JTextArea writeArea = new JTextArea();
-        writeArea.setFont(new Font("Consolas", Font.PLAIN, 13));
+        writeArea.setFont(Constants.AREA_FONT);
         printArea.setEditable(false);
         printArea.setWrapStyleWord(true);
         printArea.setLineWrap(true);
@@ -190,7 +191,8 @@ public class WorkerThread implements Runnable {
             for (int i = 1; i < appManager.getAppPages().getTabCount(); i++) {
                 if (appManager.getAppPages().getTitleAt(i).equals(convUser)) {
                     appManager.getAppPages().setSelectedIndex(i);
-                    break;
+//                    break;
+                    return;
                 }
             }
 
@@ -234,6 +236,17 @@ public class WorkerThread implements Runnable {
 
     }
 
+    public static void printMessage(String sender, String receiver, String message,
+                                    JTextArea tmpPrint) {
+        //display message in proper conversation tab
+        Calendar calendar = Calendar.getInstance();
+        SimpleDateFormat dateFormat = new SimpleDateFormat("HH:mm");
+//        JTextArea tmpPrint = printAreas.get(receiver);
+        tmpPrint.append(sender + ", " + dateFormat.format(calendar.getTime()) + "\n");
+        tmpPrint.append(message + "\n\n");
+        tmpPrint.setCaretPosition(tmpPrint.getDocument().getLength());
+    }
+
     public void printMessage(String sender, String receiver, String message) {
 
         //display message in proper conversation tab
@@ -248,7 +261,7 @@ public class WorkerThread implements Runnable {
     @Override
     public void run() {
 
-        LoginWindow loginWindow = new LoginWindow();
+//        LoginWindow loginWindow = new LoginWindow();
 
 
         Thread.currentThread().setName("Client_NO_ID");
@@ -278,7 +291,8 @@ public class WorkerThread implements Runnable {
 
                 LoginData loginData = loginWindow.getLoginData();
                 if (loginData == null) {
-                    appManager.getAppFrame().setVisible(false);
+                    loginWindow.disposeWindow();
+//                    appManager.getAppFrame().setVisible(false);
                     appManager.getAppFrame().dispose();
                     return;
                 }
@@ -289,6 +303,7 @@ public class WorkerThread implements Runnable {
                 buffer.put((userName + ";").getBytes(Constants.CHARSET));
                 buffer.flip();
                 channel.write(buffer);
+                loginData.clearData();
 
                 buffer.clear();
                 bytesRead = channel.read(buffer);
@@ -298,6 +313,8 @@ public class WorkerThread implements Runnable {
                 if (response == -1) {
                     userName = "";
                     loginWindow.dataInvalid(Constants.SIGNUP_ERROR);
+//                    loginWindow.setLoginData(null);
+
                 }
             }
             channel.configureBlocking(false);
@@ -454,6 +471,11 @@ public class WorkerThread implements Runnable {
         }
         appManager.getAppFrame().setVisible(false);
         appManager.getAppFrame().dispose();
+    }
+
+    @Autowired
+    public void setLoginWindow(LoginWindow loginWindow) {
+        this.loginWindow = loginWindow;
     }
 
     public ArrayBlockingQueue<String> getMainDataQueue() {

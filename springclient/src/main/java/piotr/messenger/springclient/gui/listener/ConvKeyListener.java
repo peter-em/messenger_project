@@ -14,16 +14,24 @@ import java.util.concurrent.ArrayBlockingQueue;
 
 
 @Component
+@Qualifier("convKeyListener")
 public class ConvKeyListener extends KeyAdapter {
 
-    private WorkerThread worker;
+//    private WorkerThread worker;
     private Map<String, JTextArea> writeAreas;
+    private Map<String, JTextArea> printAreas;
     private ArrayBlockingQueue<String> mainDataQueue;
     private JTabbedPane appTabbs;
 
+//    @Autowired
+//    public void setWorker(WorkerThread worker) {
+//        this.worker = worker;
+//    }
+
+
     @Autowired
-    public void setWorker(WorkerThread worker) {
-        this.worker = worker;
+    public void setPrintAreas(@Qualifier("printAreas") Map<String, JTextArea> printAreas) {
+        this.printAreas = printAreas;
     }
 
     @Autowired
@@ -62,7 +70,8 @@ public class ConvKeyListener extends KeyAdapter {
 
 //                    mainDataQueue.add(tabName + ";" + tmpWrite.getText());
                     mainDataQueue.add(tabName + ";" + tmpWrite.getToolTipText());
-                    worker.printMessage("me", tabName, tmpWrite.getText());
+//                    worker.printMessage("me", tabName, tmpWrite.getText());
+                    WorkerThread.printMessage("me", tabName, tmpWrite.getText(), printAreas.get(tabName));
                     tmpWrite.setText("");
                 }
             }

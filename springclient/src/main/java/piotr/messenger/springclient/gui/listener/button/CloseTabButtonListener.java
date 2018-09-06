@@ -7,7 +7,7 @@ import javax.swing.*;
 import java.awt.event.ActionEvent;
 
 @Component
-public class CloseButtonListener extends ButtonListener {
+public class CloseTabButtonListener extends MainWindowActionListener {
 
     private JTabbedPane appTabbs;
 
