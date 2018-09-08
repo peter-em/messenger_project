@@ -10,7 +10,9 @@
         <version>0.8.1</version>
     </parent>
 
+    <groupId>piotr.messenger.server</groupId>
     <artifactId>messenger-server</artifactId>
+    <packaging>pom</packaging>
 
     <dependencies>
         <dependency>

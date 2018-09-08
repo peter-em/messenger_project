@@ -23,13 +23,18 @@
     <modules>
         <module>client</module>
         <module>server</module>
-        <module>springclient</module>
     </modules>
 
     <ciManagement>
         <system>Travis CI</system>
         <url>https://travis-ci.org/peter-em/messenger_project</url>
     </ciManagement>
+
+    <!--<parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>2.0.4.RELEASE</version>
+    </parent>-->
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -57,7 +62,6 @@
                 <groupId>ch.qos.logback</groupId>
                 <artifactId>logback-classic</artifactId>
                 <version>1.2.3</version>
-                <!--<scope>test</scope>-->
             </dependency>
 
             <dependency>
@@ -66,6 +70,10 @@
                 <version>${spring.version}</version>
             </dependency>
 
+            <!--<dependency>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-starter</artifactId>
+            </dependency>-->
 
         </dependencies>
     </dependencyManagement>
@@ -74,31 +82,7 @@
         <defaultGoal>install</defaultGoal>
         <pluginManagement>
             <plugins>
-                <!--<plugin>
-                    <artifactId>maven-enforcer-plugin</artifactId>
-                    <version>1.4.1</version>
-                    <executions>
-                        <execution>
-                            <id>enforce-dependencies</id>
-                            <goals>
-                                <goal>enforce</goal>
-                            </goals>
-                            <phase>validate</phase>
-                            <configuration>
-                                <rules>
-                                    <dependencyConvergence />
-                                    <reactorModuleConvergence />
-                                    <requireMavenVersion>
-                                        <version>3.5.4</version>
-                                    </requireMavenVersion>
-                                    <requireJavaVersion>
-                                        <version>1.8.0</version>
-                                    </requireJavaVersion>
-                                </rules>
-                            </configuration>
-                        </execution>
-                    </executions>
-                </plugin>-->
+
                 <plugin>
                     <artifactId>maven-compiler-plugin</artifactId>
                     <version>3.7.0</version>
@@ -107,6 +91,7 @@
                         <target>1.8</target>
                     </configuration>
                 </plugin>
+
                 <plugin>
                     <artifactId>maven-release-plugin</artifactId>
                     <version>2.5.3</version>
@@ -117,21 +102,14 @@
                         <goals>deploy</goals>
                     </configuration>
                 </plugin>
+
+                <!--<plugin>
+                    <groupId>org.springframework.boot</groupId>
+                    <artifactId>spring-boot-maven-plugin</artifactId>
+                </plugin>-->
+
             </plugins>
         </pluginManagement>
     </build>
-
-    <!--<profiles>
-        <profile>
-            <id>release</id>
-            <build>
-                <plugins>
-                    <plugin>
-                        <artifactId>maven-release-plugin</artifactId>
-                    </plugin>
-                </plugins>
-            </build>
-        </profile>
-    </profiles>-->
 
 </project>
