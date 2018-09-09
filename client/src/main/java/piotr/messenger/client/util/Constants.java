@@ -1,6 +1,6 @@
 package piotr.messenger.client.util;
 
-import java.awt.Color;
+import java.awt.*;
 import java.nio.charset.Charset;
 
 public class Constants {
@@ -23,7 +23,20 @@ public class Constants {
     public static final String SIGNUP_ERROR = "This username already exists!";
     public static final String TOO_SHORT = "Username too short (min. 3 letters)";
     public static final String PSWD_EMPTY = "Please enter password";
+    public static final String SWITCH_TO_LOGIN = "Already registered? Click to Log In";
+    public static final String SWITCH_TO_REGISTER = "Dont't have account? Register here";
+    public static final String LOGIN_BUTTON = "Log In";
+    public static final String REGISTER_BUTTON = "Register";
+    public static final int LOGIN_MODE = 1;
+    public static final int REGISTER_MODE = 2;
 
     public static final Color TEXT_AREA_COLOR = new Color(84, 88, 90);
     public static final Color TEXT_COLOR = new Color(242,242,242);
+    public static final Color DATA_ERROR = new Color(187,0,10);
+    public static final Color DARK_BLUE = new Color(0,0,240);
+    public static final Color BLACK = new Color(0,0,0);
+    public static final Color LIST_ELEMENT = new Color(0,74,12);
+
+    public static final Font AREA_FONT = new Font("Consolas", Font.PLAIN, 13);
+
 }

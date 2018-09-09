@@ -1,13 +1,12 @@
 package piotr.messenger.client.util;
 
+//@Component
 public class LoginData {
+
     private String login;
     private String password;
+    private int mode;
 
-    /*LoginData(String login, String password) {
-        this.login = login;
-        this.password = password;
-    }*/
 
     public String getLogin() {
         return login;
@@ -23,5 +22,18 @@ public class LoginData {
 
     public void setPassword(String password) {
         this.password = password;
+    }
+
+    public void setMode(int mode) {
+        this.mode = mode;
+    }
+
+    public boolean isInLogInMode() {
+        return mode == 1;
+    }
+
+    public void clearData() {
+        login = "";
+        password = "";
     }
 }

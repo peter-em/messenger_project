@@ -1,5 +1,9 @@
 package piotr.messenger.client.core;
 
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.stereotype.Component;
+import piotr.messenger.client.gui.listener.ConvKeyListener;
 import piotr.messenger.client.util.Constants;
 import piotr.messenger.client.util.DialogsHandler;
 import piotr.messenger.client.util.LoginData;
@@ -12,12 +16,14 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
+import java.text.SimpleDateFormat;
 import java.util.Map;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Collections;
+import java.util.Calendar;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
@@ -26,6 +32,7 @@ import org.slf4j.LoggerFactory;
 
 
 //worker thread - manages application data
+@Component
 public class WorkerThread implements Runnable {
 
     private Logger logger;
@@ -36,19 +43,27 @@ public class WorkerThread implements Runnable {
     private DialogsHandler dialogs;
     private List<String> clientsNames;
     private MainWindow appManager;
+    private LoginWindow loginWindow;
     private String userName;
     private Map<String, ArrayBlockingQueue<String>> readThreads;
     private Map<String, ArrayBlockingQueue<String>> writeThreads;
+    private Map<String, JTextArea> writeAreas;
+    private Map<String, JTextArea> printAreas;
+    private ArrayBlockingQueue<String> mainDataQueue;
+    private DefaultListModel<String> defListModel;
+    private ConvKeyListener convKeyListener;
 
-    public WorkerThread(MainWindow appManager) {
-        this.appManager = appManager;
-        logger = LoggerFactory.getLogger(MainWindow.class);
+    public WorkerThread() {
+        logger = LoggerFactory.getLogger(WorkerThread.class);
         awaitingConv = false;
         convUsers = new LinkedList<>();
-        dialogs = new DialogsHandler(appManager.getMainPanel());
         clientsNames = new LinkedList<>();
         readThreads = new HashMap<>();
 		writeThreads = new HashMap<>();
+    }
+
+    public void init(MainWindow appManager) {
+        this.appManager = appManager;
     }
 
     private SocketChannel connectToServer() {
@@ -89,19 +104,16 @@ public class WorkerThread implements Runnable {
             }
             Collections.sort(clientsNames);
 
-//            appManager.getDefListModel().removeAllElements();
-            DefaultListModel<Object> model = appManager.getDefListModel();
-            model.removeAllElements();
+            defListModel.removeAllElements();
             for (String str : clientsNames) {
-//                appManager.getDefListModel().addElement(str);
-                model.addElement(str);
+                defListModel.addElement(str);
             }
-//            appManager.getUsersCount().setText("Active users: " + appManager.getDefListModel().size());
-            appManager.getUsersCount().setText("Active users: " + model.size());
+            appManager.getUsersCount().setText(("Active users: " + defListModel.size()));
 
         } else if (response == -10) {
             //another user wants to talk
-            appManager.getMainDataQueue().add(dialogs.convInvite(users[0]));
+//            appManager.getMainDataQueue().add(dialogs.convInvite(users[0]));
+            mainDataQueue.add(dialogs.convInvite(users[0]));
             awaitingConv = true;
             convUsers.add(users[0]);
 
@@ -138,20 +150,21 @@ public class WorkerThread implements Runnable {
     private void createConvPage(String convUser) {
 
         JTextArea printArea = new JTextArea();
-        printArea.setFont(new Font("Consolas", Font.PLAIN, 13));
-        JTextArea writeArea = new JTextArea();
-        writeArea.setFont(new Font("Consolas", Font.PLAIN, 13));
+        printArea.setFont(Constants.AREA_FONT);
         printArea.setEditable(false);
         printArea.setWrapStyleWord(true);
         printArea.setLineWrap(true);
+        printArea.setBackground(Constants.TEXT_AREA_COLOR);
+        printArea.setForeground(Constants.TEXT_COLOR);
+
+        JTextArea writeArea = new JTextArea();
+        writeArea.setFont(Constants.AREA_FONT);
         writeArea.setWrapStyleWord(true);
         writeArea.setLineWrap(true);
-        printArea.setBackground(Constants.TEXT_AREA_COLOR);
         writeArea.setBackground(Constants.TEXT_AREA_COLOR);
         writeArea.setCaretColor(Constants.TEXT_COLOR);
-        printArea.setForeground(Constants.TEXT_COLOR);
         writeArea.setForeground(Constants.TEXT_COLOR);
-        writeArea.addKeyListener(appManager);
+        writeArea.addKeyListener(convKeyListener);
 
         JScrollPane scroll1 = new JScrollPane(printArea, JScrollPane.VERTICAL_SCROLLBAR_ALWAYS,
                 JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
@@ -165,19 +178,17 @@ public class WorkerThread implements Runnable {
         panel.add(scroll1, BorderLayout.CENTER);
 
 
-
         appManager.getAppPages().addTab(convUser, panel);
-        appManager.getWriteAreas().put(convUser, writeArea);
-        appManager.getPrintAreas().put(convUser, printArea);
+        writeAreas.put(convUser, writeArea);
+        printAreas.put(convUser, printArea);
 
         if (appManager.getAppPages().getSelectedIndex() == 0)
             for (int i = 1; i < appManager.getAppPages().getTabCount(); i++) {
                 if (appManager.getAppPages().getTitleAt(i).equals(convUser)) {
                     appManager.getAppPages().setSelectedIndex(i);
-                    break;
+                    return;
                 }
             }
-
     }
 
     //creating reader and writer for new conv
@@ -218,11 +229,19 @@ public class WorkerThread implements Runnable {
 
     }
 
+    public static void printMessage(String sender, String receiver, String message,
+                                    JTextArea printArea) {
+        //display message in proper conversation tab
+        Calendar calendar = Calendar.getInstance();
+        SimpleDateFormat dateFormat = new SimpleDateFormat("HH:mm");
+        printArea.append(sender + ", " + dateFormat.format(calendar.getTime()) + "\n");
+        printArea.append(message + "\n\n");
+        printArea.setCaretPosition(printArea.getDocument().getLength());
+    }
+
+
     @Override
     public void run() {
-
-        LoginWindow loginWindow = new LoginWindow();
-
 
         Thread.currentThread().setName("Client_NO_ID");
 
@@ -251,7 +270,8 @@ public class WorkerThread implements Runnable {
 
                 LoginData loginData = loginWindow.getLoginData();
                 if (loginData == null) {
-                    appManager.getAppFrame().setVisible(false);
+                    loginWindow.disposeWindow();
+//                    appManager.getAppFrame().setVisible(false);
                     appManager.getAppFrame().dispose();
                     return;
                 }
@@ -262,6 +282,7 @@ public class WorkerThread implements Runnable {
                 buffer.put((userName + ";").getBytes(Constants.CHARSET));
                 buffer.flip();
                 channel.write(buffer);
+                loginData.clearData();
 
                 buffer.clear();
                 bytesRead = channel.read(buffer);
@@ -271,6 +292,8 @@ public class WorkerThread implements Runnable {
                 if (response == -1) {
                     userName = "";
                     loginWindow.dataInvalid(Constants.SIGNUP_ERROR);
+//                    loginWindow.setLoginData(null);
+
                 }
             }
             channel.configureBlocking(false);
@@ -278,8 +301,10 @@ public class WorkerThread implements Runnable {
 
 
             //reveal window app if verification was succesful
-            appManager.setMainDataQueue(new ArrayBlockingQueue<>(Constants.BLOCKING_SIZE));
+//            appManager.setMainDataQueue(new ArrayBlockingQueue<>(Constants.BLOCKING_SIZE));
+
             appManager.getOwnerName().setText(userName);
+//            setOwnerName(userName);
             appManager.getAppFrame().setVisible(true);
             Thread.currentThread().setName("Client_" + userName);
 
@@ -302,10 +327,12 @@ public class WorkerThread implements Runnable {
                 }
 
 
-                if (!appManager.getMainDataQueue().isEmpty()) {
+//                if (!appManager.getMainDataQueue().isEmpty()) {
+                if (!mainDataQueue.isEmpty()) {
 
                     try {
-                        input = appManager.getMainDataQueue().take();
+//                        input = appManager.getMainDataQueue().take();
+                        input = mainDataQueue.take();
                         sendOK = true;
                     } catch (InterruptedException bqEx) {
                         logger.error("Main queue ({})", bqEx.getMessage());
@@ -378,7 +405,7 @@ public class WorkerThread implements Runnable {
 
                         } else {
                             // process received message
-                            appManager.printMessage(convKey, convKey, input);
+                            printMessage(convKey, convKey, input, printAreas.get(convKey));
                         }
                     }
                 }
@@ -409,8 +436,8 @@ public class WorkerThread implements Runnable {
     private void removeMapings(String convUser) {
         writeThreads.remove(convUser);
         readThreads.remove(convUser);
-        appManager.getWriteAreas().remove(convUser);
-        appManager.getWriteAreas().remove(convUser);
+        writeAreas.remove(convUser);
+        printAreas.remove(convUser);
     }
 
     private void performSafeClose() {
@@ -422,4 +449,50 @@ public class WorkerThread implements Runnable {
         appManager.getAppFrame().dispose();
     }
 
+    @Autowired
+    public void setLoginWindow(LoginWindow loginWindow) {
+        this.loginWindow = loginWindow;
+    }
+
+    public ArrayBlockingQueue<String> getMainDataQueue() {
+        return mainDataQueue;
+    }
+
+    @Autowired
+    public void setMainDataQueue(ArrayBlockingQueue<String> mainDataQueue) {
+        this.mainDataQueue = mainDataQueue;
+    }
+
+    public Map<String, JTextArea> getWriteAreas() {
+        return writeAreas;
+    }
+
+    @Autowired
+    public void setWriteAreas(@Qualifier("writeAreas") Map<String, JTextArea> writeAreas) {
+        this.writeAreas = writeAreas;
+    }
+
+    public Map<String, JTextArea> getPrintAreas() {
+        return printAreas;
+    }
+
+    @Autowired
+    public void setPrintAreas(@Qualifier("printAreas") Map<String, JTextArea> printAreas) {
+        this.printAreas = printAreas;
+    }
+
+    @Autowired
+    public void setDefListModel(DefaultListModel<String> defListModel) {
+        this.defListModel = defListModel;
+    }
+
+    @Autowired
+    public void setDialogs(DialogsHandler dialogs) {
+        this.dialogs = dialogs;
+    }
+
+    @Autowired
+    public void setConvKeyListener(ConvKeyListener convKeyListener) {
+        this.convKeyListener = convKeyListener;
+    }
 }
