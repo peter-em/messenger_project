@@ -30,22 +30,15 @@
         <url>https://travis-ci.org/peter-em/messenger_project</url>
     </ciManagement>
 
-    <!--<parent>
-        <groupId>org.springframework.boot</groupId>
-        <artifactId>spring-boot-starter-parent</artifactId>
-        <version>2.0.4.RELEASE</version>
-    </parent>-->
-
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-
         <slf4j.version>1.7.25</slf4j.version>
         <spring.version>5.0.8.RELEASE</spring.version>
+        <spring.boot.version>2.0.4.RELEASE</spring.boot.version>
     </properties>
 
     <dependencyManagement>
         <dependencies>
-
             <dependency>
                 <groupId>org.slf4j</groupId>
                 <artifactId>slf4j-api</artifactId>
@@ -70,11 +63,17 @@
                 <version>${spring.version}</version>
             </dependency>
 
-            <!--<dependency>
+            <dependency>
                 <groupId>org.springframework.boot</groupId>
-                <artifactId>spring-boot-starter</artifactId>
-            </dependency>-->
-
+                <artifactId>spring-boot-starter-actuator</artifactId>
+                <version>${spring.boot.version}</version>
+                <exclusions>
+                    <exclusion>
+                        <groupId>ch.qos.logback</groupId>
+                        <artifactId>logback-classic</artifactId>
+                    </exclusion>
+                </exclusions>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 
@@ -82,7 +81,6 @@
         <defaultGoal>install</defaultGoal>
         <pluginManagement>
             <plugins>
-
                 <plugin>
                     <artifactId>maven-compiler-plugin</artifactId>
                     <version>3.7.0</version>
@@ -103,11 +101,11 @@
                     </configuration>
                 </plugin>
 
-                <!--<plugin>
+                <plugin>
                     <groupId>org.springframework.boot</groupId>
                     <artifactId>spring-boot-maven-plugin</artifactId>
-                </plugin>-->
-
+                    <version>${spring.boot.version}</version>
+                </plugin>
             </plugins>
         </pluginManagement>
     </build>
