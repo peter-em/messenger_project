@@ -1,15 +1,18 @@
 package piotr.messenger.server.util;
 
+import org.springframework.stereotype.Component;
+
 import java.nio.channels.SocketChannel;
 import java.util.ArrayList;
 import java.util.List;
 
-public class Clients {
+@Component
+public class UsersDatabase {
 
     private List<String> clients;
     private List<SocketChannel> channels;
 
-    public Clients() {
+    public UsersDatabase() {
         clients = new ArrayList<>();
         channels = new ArrayList<>();
     }

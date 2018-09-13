@@ -4,11 +4,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 import piotr.messenger.client.gui.listener.ConvKeyListener;
-import piotr.messenger.client.util.Constants;
 import piotr.messenger.client.util.DialogsHandler;
 import piotr.messenger.client.util.LoginData;
 import piotr.messenger.client.gui.MainWindow;
 import piotr.messenger.client.gui.LoginWindow;
+import piotr.messenger.library.Constants;
 
 import javax.swing.*;
 import java.awt.*;
@@ -71,7 +71,7 @@ public class WorkerThread implements Runnable {
         try {
             channel = SocketChannel.open();
             channel.configureBlocking(true);
-            channel.connect(new InetSocketAddress(Constants.SRVR_ADDRESS, Constants.PORT_NR));
+            channel.connect(new InetSocketAddress(Constants.HOST_ADDRESS, Constants.PORT_NR));
             int timeOut = 0;
             while (!channel.finishConnect()) {
                 if (timeOut++ > 100)
@@ -95,6 +95,8 @@ public class WorkerThread implements Runnable {
 //            logger.info("response: {}", response);
         String[] users = usersData.split(";");
         if (response > 0) {
+
+            logger.info("userList update");
 
             clientsNames.clear();
             for (int i = 0; i < response; i++) {
@@ -276,6 +278,14 @@ public class WorkerThread implements Runnable {
                     return;
                 }
                 userName = loginData.getLogin();
+
+//                ClientData clientData = new ClientData(userName, loginData.getPassword(), 0);
+////                ByteBuffer tmpBuffer = ByteBuffer.allocate(Constants.BUFFER_SIZE);
+//                ByteBuffer tmpBuffer = ClientDataConverter.encodeToBuffer(clientData);
+//                ClientData decodedClient = ClientDataConverter.decodeFromBuffer(tmpBuffer);
+//
+//                logger.info("DECODED: {}", decodedClient);
+
 
 
                 buffer.clear();

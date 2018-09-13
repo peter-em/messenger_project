@@ -1,24 +1,38 @@
-package piotr.messenger.client.util;
+package piotr.messenger.library;
 
 import java.awt.*;
 import java.nio.charset.Charset;
 
 public class Constants {
-    public static final String APP_NAME = "Chat-o-Matt";
-    public static final String SRVR_ADDRESS = "127.0.0.1";
-    public static final int PORT_NR = 6125;
-    public static final int BUFFER_SIZE = 1024;
+
+    // COMMON
     public static final Charset CHARSET = Charset.forName("UTF-8");
-    public static final int BLOCKING_SIZE = 128;
+    public static final int BUFFER_SIZE = 1024;
+
+    // CONNECTION PARAMETERS
+    public static final int PORT_NR = 6125;
+    public static final String HOST_ADDRESS = "127.0.0.1";
+
+    // DATA TRANSFER
+    public static final String C_ASK = "a";
+    public static final String C_REFUSE = "n";
+    public static final String C_ACCEPT = "y";
+    //    public static final String C_CONFIRM = "c";
+
+    // SERVER
+    public static final int CONV_MAX = 40;
+
+    // CLIENT
+    public static final String APP_NAME = "Chat-o-Matt";
     public static final String APP_INFO =
             "Welcome in Chatt-o-Matt\n\n" +
-            "It is simple messenger app,\n" +
-            "created as university project.\n" +
-            "I use it as learning platform.\n" +
-            "Technologies involved:\n" +
-            "Maven, Spring, SLF4J, SQL.\n\n" +
-            "Please enter Your \n" +
-            "username and password";
+                    "It is simple messenger app,\n" +
+                    "created as university project.\n" +
+                    "I use it as learning platform.\n" +
+                    "Technologies involved:\n" +
+                    "Maven, Spring, SLF4J, SQL.\n\n" +
+                    "Please enter Your \n" +
+                    "username and password";
     public static final String LOGIN_ERROR = "Invalid username and/or password!";
     public static final String SIGNUP_ERROR = "This username already exists!";
     public static final String TOO_SHORT = "Username too short (min. 3 letters)";
@@ -27,6 +41,7 @@ public class Constants {
     public static final String SWITCH_TO_REGISTER = "Dont't have account? Register here";
     public static final String LOGIN_BUTTON = "Log In";
     public static final String REGISTER_BUTTON = "Register";
+    public static final int BLOCKING_SIZE = 128;
     public static final int LOGIN_MODE = 1;
     public static final int REGISTER_MODE = 2;
 

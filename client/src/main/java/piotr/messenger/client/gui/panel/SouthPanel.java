@@ -4,7 +4,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 import piotr.messenger.client.api.Panel;
-import piotr.messenger.client.util.Constants;
+import piotr.messenger.library.Constants;
 
 import javax.swing.BorderFactory;
 import javax.swing.JPanel;
