@@ -4,6 +4,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 import piotr.messenger.client.util.LoginData;
+import piotr.messenger.library.Constants;
 
 import javax.annotation.PostConstruct;
 import javax.swing.*;
@@ -15,6 +16,7 @@ public class LoginWindow {
     private JTextField loginField;
     private JPasswordField passwordField;
     private JLabel invalidLogin;
+    private JButton sendButton;
     private LoginData loginData;
     private volatile boolean dataReady = false;
 
@@ -24,9 +26,13 @@ public class LoginWindow {
         MainWindow.centerWindow(loginFrame);
     }
 
-    public void dataInvalid(String reason) {
+    public void dataInvalid() {
         dataReady = false;
-        invalidLogin.setText(reason);
+        if (sendButton.getText().equals(Constants.LOGIN_BUTTON)) {
+            invalidLogin.setText(Constants.LOGIN_ERROR);
+        } else {
+            invalidLogin.setText(Constants.REGISTER_ERROR);
+        }
         invalidLogin.setVisible(true);
         loginField.selectAll();
         loginField.requestFocus();
@@ -78,5 +84,10 @@ public class LoginWindow {
     @Autowired
     public void setInvalidLogin(@Qualifier("dataErrorLabel") JLabel invalidLogin) {
         this.invalidLogin = invalidLogin;
+    }
+
+    @Autowired
+    public void setSendButton(@Qualifier("logInButton") JButton sendButton) {
+        this.sendButton = sendButton;
     }
 }

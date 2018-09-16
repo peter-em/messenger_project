@@ -76,7 +76,4 @@ public class ConversationsExecutor {
         handlersExecutor.shutdown();
     }
 
-    public ArrayBlockingQueue<ConversationEnd> getEndDataQueue() {
-        return endDataQueue;
-    }
 }

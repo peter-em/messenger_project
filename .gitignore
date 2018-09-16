@@ -3,4 +3,5 @@ out/
 .idea/
 *.iml
 target/
+application.properties
 TODO.txt

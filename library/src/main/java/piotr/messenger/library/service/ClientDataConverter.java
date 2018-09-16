@@ -7,7 +7,7 @@ import java.nio.ByteBuffer;
 
 public class ClientDataConverter {
 
-    private static String getStringFromArray(ByteBuffer buffer, int size) {
+    public static String getStringFromArray(ByteBuffer buffer, int size) {
         byte[] array = new byte[size];
         buffer.get(array, 0, size);
         return new String(array, Constants.CHARSET);
@@ -20,9 +20,7 @@ public class ClientDataConverter {
         bytesToRead = buffer.getInt();
         String passwd = getStringFromArray(buffer, bytesToRead);
         bytesToRead = buffer.getInt();
-        ClientData clientData = new ClientData(login, passwd, bytesToRead);
-
-        return clientData;
+        return new ClientData(login, passwd, bytesToRead);
     }
 
     public static ByteBuffer encodeToBuffer(ClientData clientData) {

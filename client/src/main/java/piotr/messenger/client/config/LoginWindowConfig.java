@@ -37,7 +37,7 @@ public class LoginWindowConfig {
 
         JFrame frame = new JFrame("LOGIN");
 
-        frame.setMinimumSize(new Dimension(240, 340));
+        frame.setMinimumSize(new Dimension(240, 360));
         frame.setResizable(false);
         frame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
 

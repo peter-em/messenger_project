@@ -9,9 +9,9 @@ import java.util.List;
 @Component
 public class ConnectionParameters {
 
-    private String hostAddress;
-    private int hostPort;
-    private List<Integer> executorPorts;
+    private final String hostAddress;
+    private final int hostPort;
+    private final List<Integer> executorPorts;
 
     public ConnectionParameters() {
         hostAddress = Constants.HOST_ADDRESS;

@@ -4,7 +4,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import piotr.messenger.library.Constants;
 import piotr.messenger.server.util.ConversationPair;
-import piotr.messenger.server.util.UsersDatabase;
+import piotr.messenger.server.database.UsersDatabase;
 
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
@@ -67,6 +67,10 @@ public class ConversationService {
                 ConversationPair pair = new ConversationPair(clientRead, usersDatabase.getChannel(userData[1]));
 
 //                pendingPairs.remove(pair);
+                if (pair.hasNullClient()) {
+//                        logger.debug("REFUSE - has null");
+                    return;
+                }
                 executor.removePendingPair(pair);
                 readBuffer.putInt(-30);
                 readBuffer.put((userData[2] + ";").getBytes(Constants.CHARSET));
@@ -92,38 +96,6 @@ public class ConversationService {
                     service.send(pair.getClient1(), readBuffer.array());
                     service.send(pair.getClient2(), readBuffer.array());
                 }
-//                pair = new ConversationPair(clientRead, usersDatabase.getChannel(userData[1]));
-//                if (pair.hasNullClient()) {
-////                        logger.debug("ACCEPT - has null");
-//                    return;
-//                }
-//                //conversation request accepted
-//                pendingPairs.remove(pair);
-//                activePairs.add(pair);
-//
-//                if (activeWorkersCounter < Constants.CONV_MAX) {
-//
-//                    //create new handler and send usersDatabase connection data
-//                    //if limit of conversations was not reached
-//                    Integer createPort = listenPort + 1;
-//                    if (!handlersPorts.isEmpty()) {
-//                        createPort = handlersPorts.get(handlersPorts.size() - 1) + 1;
-//                    }
-//                    handlersPorts.add(createPort);
-//
-//                    ConversationWorker worker = new ConversationWorker(hostName, createPort, handlersEndData, pair);
-//                    activeWorkersCounter++;
-//                    handlersExecutor.execute(worker);
-//
-//                    readBuffer.clear();
-//                    readBuffer.putInt(-40);
-//                    readBuffer.put((createPort + ";" + hostName + ";"
-//                            + userData[1] + ";" + userData[2] + ";").getBytes(Constants.CHARSET));
-//                    readBuffer.flip();
-//                    send(pair.getClient1(), readBuffer.array());
-//                    send(pair.getClient2(), readBuffer.array());
-//
-//                }
         }
 
     }

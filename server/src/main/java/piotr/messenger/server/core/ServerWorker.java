@@ -1,35 +1,18 @@
 package piotr.messenger.server.core;
 
-import org.omg.PortableInterceptor.LOCATION_FORWARD;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import piotr.messenger.server.service.ConnectionParameters;
-import piotr.messenger.server.service.ConversationService;
 import piotr.messenger.server.service.DataFlowService;
-import piotr.messenger.server.util.ClientState;
-import piotr.messenger.server.util.ConversationEnd;
-import piotr.messenger.server.util.ConversationPair;
-import piotr.messenger.server.util.UsersDatabase;
-import piotr.messenger.library.Constants;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
-import java.nio.ByteBuffer;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.nio.channels.Selector;
 import java.nio.channels.SelectionKey;
-import java.nio.channels.spi.SelectorProvider;
 import java.nio.channels.CancelledKeyException;
-import java.util.List;
-import java.util.ArrayList;
-import java.util.LinkedList;
-import java.util.Map;
-import java.util.HashMap;
 import java.util.Iterator;
-import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -44,20 +27,16 @@ public class ServerWorker implements Runnable {
 	private ConnectionParameters parameters;
 
     public ServerWorker() {
-		System.setProperty("sun.net.useExclusiveBind", "false");
-
-	}
-
-	@Override
-	public void run() {
         logger = LoggerFactory.getLogger(ServerWorker.class);
+        System.setProperty("sun.net.useExclusiveBind", "false");
+    }
 
-        serverSocket = openSocket();
-        if (serverSocket == null) {
-            return;
-        }
+    @Override
+	public void run() {
 
-		while (!Thread.interrupted()) {
+        boolean runServer = openSocket();
+
+        while (runServer) {
 			try {
 
                 dataFlowService.cleanupClosedConversations();
@@ -91,34 +70,30 @@ public class ServerWorker implements Runnable {
 			} catch (IOException ioEx) {
                 logger.error("Problem occured while listening for events - "
                         + ioEx.getMessage());
-				//isRunning = false;
 			} catch (CancelledKeyException cancelled) {
 			    logger.error("Cancelled ({}).", cancelled.getMessage());
-			    cancelled.printStackTrace();
-			    break;
+//			    cancelled.printStackTrace();
+			    runServer = false;
             }
 		}
 
 		logger.info("Closing server");
+        dataFlowService.terminateHandlers();
 		closeSocket();
-        dataFlowService.terminaterHandlers();
 	}
 
-	private ServerSocketChannel openSocket() {
-        ServerSocketChannel serverSocket = null;
+	/* private -> testing */ boolean openSocket() {
 		try {
 			serverSocket = ServerSocketChannel.open();
 			serverSocket.configureBlocking(false);
             serverSocket.socket().bind(new InetSocketAddress(parameters.getHostAddress(), parameters.getHostPort()));
 			serverSocket.register(selector, SelectionKey.OP_ACCEPT);
-
-            logger.info("Starting server, port in use: {}.", parameters.getHostPort());
-			//isRunning = true;
 		} catch (IOException ioEx) {
             logger.error("Problem occured while opening listening port - ({}).", ioEx.getMessage());
-            Thread.currentThread().interrupt();
+            return false;
 		}
-		return serverSocket;
+        logger.info("Starting server, port in use: {}.", parameters.getHostPort());
+		return true;
 	}
 
 	private void closeSocket() {

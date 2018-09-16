@@ -21,20 +21,24 @@ public class Constants {
 
     // SERVER
     public static final int CONV_MAX = 40;
+    public static final String COL_LOGIN = "login";
+    public static final String COL_PSSWRD = "password";
+    public static final String COL_REGISER = "registered";
 
     // CLIENT
     public static final String APP_NAME = "Chat-o-Matt";
     public static final String APP_INFO =
-            "Welcome in Chatt-o-Matt\n\n" +
-                    "It is simple messenger app,\n" +
-                    "created as university project.\n" +
+                    "Welcome in Chatt-o-Matt\n\n" +
+                    "This simple messenger app,\n" +
+                    "which originated as university\n" +
+                    "project, is under development.\n" +
                     "I use it as learning platform.\n" +
                     "Technologies involved:\n" +
-                    "Maven, Spring, SLF4J, SQL.\n\n" +
+                    "Maven, Spring, SQL, Spock.\n\n" +
                     "Please enter Your \n" +
                     "username and password";
     public static final String LOGIN_ERROR = "Invalid username and/or password!";
-    public static final String SIGNUP_ERROR = "This username already exists!";
+    public static final String REGISTER_ERROR = "This username already exists!";
     public static final String TOO_SHORT = "Username too short (min. 3 letters)";
     public static final String PSWD_EMPTY = "Please enter password";
     public static final String SWITCH_TO_LOGIN = "Already registered? Click to Log In";

@@ -1,6 +1,8 @@
-package piotr.messenger.server.util;
+package piotr.messenger.server.database;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+import piotr.messenger.library.util.ClientData;
 
 import java.nio.channels.SocketChannel;
 import java.util.ArrayList;
@@ -11,6 +13,7 @@ public class UsersDatabase {
 
     private List<String> clients;
     private List<SocketChannel> channels;
+    private UsersJDBCTemplate mysqlTable;
 
     public UsersDatabase() {
         clients = new ArrayList<>();
@@ -26,17 +29,23 @@ public class UsersDatabase {
         channels.add(channel);
     }
 
+    public boolean verifyClient(ClientData data) {
+        UserSQL user = mysqlTable.getUser(data.getLogin());
+        return user != null && user.getPassword().equals(data.getPassword());
+    }
+
+    public boolean registerClient(ClientData data) {
+        if (!mysqlTable.hasUser(data.getLogin())) {
+            mysqlTable.registerUser(data.getLogin(), data.getPassword());
+            return true;
+        }
+        return false;
+    }
+
     public List<String> getUsers() {
         return clients;
     }
 
-    public List<SocketChannel> getChannels() {
-        return channels;
-    }
-
-    public int usersCount() {
-        return clients.size();
-    }
 
     public String getUser(SocketChannel channel) {
         return clients.get(channels.indexOf(channel));
@@ -53,5 +62,10 @@ public class UsersDatabase {
     public void dropUser(SocketChannel channel) {
         clients.remove(channels.indexOf(channel));
         channels.remove(channel);
+    }
+
+    @Autowired
+    public void setMysqlTable(UsersJDBCTemplate mysqlTable) {
+        this.mysqlTable = mysqlTable;
     }
 }

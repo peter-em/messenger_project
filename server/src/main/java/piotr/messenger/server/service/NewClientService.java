@@ -2,10 +2,9 @@ package piotr.messenger.server.service;
 
 import org.springframework.stereotype.Component;
 import piotr.messenger.library.Constants;
-import piotr.messenger.server.core.ConversationWorker;
-import piotr.messenger.server.util.ClientState;
-import piotr.messenger.server.util.ConversationPair;
-import piotr.messenger.server.util.UsersDatabase;
+import piotr.messenger.library.service.ClientDataConverter;
+import piotr.messenger.library.util.ClientData;
+import piotr.messenger.server.database.UsersDatabase;
 
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
@@ -27,33 +26,30 @@ public class NewClientService {
 
     public boolean handleData(ByteBuffer readBuffer, SocketChannel clientRead) {
 
-        String clientData = new String(readBuffer.array(), Constants.CHARSET);
-        String clientId = clientData.split(";")[0];
-
-
-        readBuffer.clear();
+        ClientData clientData = ClientDataConverter.decodeFromBuffer(readBuffer);
 
         //veryfication successful, returning list of connected clients
         //or -1 if provided login is already in use
-        boolean state = false;
-        if (usersDatabase.hasUser(clientId)) {
-            readBuffer.putInt(-1);
-//			    logger.debug("ID IN USE");
+        boolean response = false;
+        if (clientData.getConnectMode() == Constants.LOGIN_MODE) {
+            response = usersDatabase.verifyClient(clientData);
+        } else if (clientData.getConnectMode() == Constants.REGISTER_MODE) {
+            response = usersDatabase.registerClient(clientData);
+        }
 
-        } else {
-//			    logger.debug("ID FREE");
+        // send client a response to veryfication/registration request
+        // success (0) or failure (-1)
+        readBuffer.clear();
+        if (response) {
+            usersDatabase.addUser(clientData.getLogin(), clientRead);
             readBuffer.putInt(0);
-            usersDatabase.addUser(clientId, clientRead);
-            //change client state from waiting for veryfication
-            //into enabling conversations
-//            state.setState(ClientState.SERVECLIENT);
-            state = true;
-//            updateClietsUserList(true);
-            service.toggleUpdateClients();
+        } else {
+            readBuffer.putInt(-1);
         }
         readBuffer.flip();
         service.send(clientRead, readBuffer.array());
-        return state;
+
+        return response;
     }
 
 
