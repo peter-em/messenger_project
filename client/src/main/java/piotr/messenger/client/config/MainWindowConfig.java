@@ -7,7 +7,7 @@ import piotr.messenger.client.gui.panel.CenterPanel;
 import piotr.messenger.client.gui.panel.MainPanel;
 import piotr.messenger.client.gui.panel.SouthPanel;
 import piotr.messenger.client.gui.listener.button.CloseTabButtonListener;
-import piotr.messenger.client.util.Constants;
+import piotr.messenger.library.Constants;
 
 import javax.swing.*;
 import javax.swing.event.ChangeEvent;

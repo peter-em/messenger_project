@@ -3,11 +3,10 @@ package piotr.messenger.client.config;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.stereotype.Component;
 import piotr.messenger.client.gui.listener.button.CancelLoginButtonListener;
 import piotr.messenger.client.gui.listener.button.SendLoginDataButtonListener;
 import piotr.messenger.client.gui.panel.LoginPanel;
-import piotr.messenger.client.util.Constants;
+import piotr.messenger.library.Constants;
 
 import javax.swing.JFrame;
 import javax.swing.JPanel;
@@ -38,7 +37,7 @@ public class LoginWindowConfig {
 
         JFrame frame = new JFrame("LOGIN");
 
-        frame.setMinimumSize(new Dimension(240, 340));
+        frame.setMinimumSize(new Dimension(240, 360));
         frame.setResizable(false);
         frame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
 

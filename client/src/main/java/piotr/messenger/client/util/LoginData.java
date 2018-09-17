@@ -28,8 +28,8 @@ public class LoginData {
         this.mode = mode;
     }
 
-    public boolean isInLogInMode() {
-        return mode == 1;
+    public int getMode() {
+        return mode;
     }
 
     public void clearData() {

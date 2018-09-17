@@ -3,8 +3,8 @@ package piotr.messenger.client.gui.listener.button;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
-import piotr.messenger.client.util.Constants;
 import piotr.messenger.client.util.LoginData;
+import piotr.messenger.library.Constants;
 
 import javax.swing.JTextField;
 import javax.swing.JPasswordField;

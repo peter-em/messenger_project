@@ -1,8 +1,8 @@
 package piotr.messenger.server.core;
 
-import piotr.messenger.server.util.Constants;
 import piotr.messenger.server.util.ConversationEnd;
 import piotr.messenger.server.util.ConversationPair;
+import piotr.messenger.library.Constants;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -39,7 +39,7 @@ public class ConversationWorker implements Runnable {
 	private final Logger logger;
 	private int timer;
 
-	ConversationWorker(String handlerAddress, int handlerPort,
+	public ConversationWorker(String handlerAddress, int handlerPort,
                        ArrayBlockingQueue<ConversationEnd> queue, ConversationPair pair) {
 
         logger = LoggerFactory.getLogger(ConversationWorker.class);
@@ -48,7 +48,7 @@ public class ConversationWorker implements Runnable {
 		this.handlerPort = handlerPort;
 		handlersEndData = queue;
 		convPair = pair;
-		readBuffer = ByteBuffer.allocate(Constants.BUFF_SIZE*2);
+		readBuffer = ByteBuffer.allocate(Constants.BUFFER_SIZE*2);
 		clientCount = 0;
 		timer = 0;
 		isRunning = false;

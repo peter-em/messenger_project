@@ -4,11 +4,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 import piotr.messenger.client.gui.listener.ConvKeyListener;
-import piotr.messenger.client.util.Constants;
 import piotr.messenger.client.util.DialogsHandler;
 import piotr.messenger.client.util.LoginData;
 import piotr.messenger.client.gui.MainWindow;
 import piotr.messenger.client.gui.LoginWindow;
+import piotr.messenger.library.Constants;
 
 import javax.swing.*;
 import java.awt.*;
@@ -29,6 +29,9 @@ import java.util.concurrent.TimeUnit;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import piotr.messenger.library.service.ClientDataConverter;
+import piotr.messenger.library.util.ClientData;
+import static piotr.messenger.library.service.ClientDataConverter.getStringFromArray;
 
 
 //worker thread - manages application data
@@ -57,7 +60,7 @@ public class WorkerThread implements Runnable {
         logger = LoggerFactory.getLogger(WorkerThread.class);
         awaitingConv = false;
         convUsers = new LinkedList<>();
-        clientsNames = new LinkedList<>();
+        clientsNames = new ArrayList<>();
         readThreads = new HashMap<>();
 		writeThreads = new HashMap<>();
     }
@@ -71,7 +74,7 @@ public class WorkerThread implements Runnable {
         try {
             channel = SocketChannel.open();
             channel.configureBlocking(true);
-            channel.connect(new InetSocketAddress(Constants.SRVR_ADDRESS, Constants.PORT_NR));
+            channel.connect(new InetSocketAddress(Constants.HOST_ADDRESS, Constants.PORT_NR));
             int timeOut = 0;
             while (!channel.finishConnect()) {
                 if (timeOut++ > 100)
@@ -88,29 +91,36 @@ public class WorkerThread implements Runnable {
         return channel;
     }
 
+    private void decodeListFromServer(int listSize) {
+        clientsNames.clear();
+        byte[] array = new byte[Constants.RECORD_LENGTH];
+        for (int i = 0; i < listSize; i++) {
+            int bytesToRead = buffer.getInt();
+            clientsNames.add(getStringFromArray(buffer, array, bytesToRead));
+        }
+    }
+
     private void handleResponse(int response) {
-        String usersData = new String(buffer.array(), Constants.CHARSET);
-        //user holds another user's login
-//            logger.info("input: {}", usersData);
-//            logger.info("response: {}", response);
-        String[] users = usersData.split(";");
+
         if (response > 0) {
 
-            clientsNames.clear();
-            for (int i = 0; i < response; i++) {
-                if (userName.equals(users[i]))
-                    continue;
-                clientsNames.add(users[i]);
-            }
+            decodeListFromServer(response);
             Collections.sort(clientsNames);
+            clientsNames.remove(userName);
 
             defListModel.removeAllElements();
             for (String str : clientsNames) {
                 defListModel.addElement(str);
             }
             appManager.getUsersCount().setText(("Active users: " + defListModel.size()));
+            return;
+        }
 
-        } else if (response == -10) {
+        //user holds another user's login
+        buffer.compact();
+        String usersData = new String(buffer.array(), Constants.CHARSET);
+        String[] users = usersData.split(";");
+        if (response == -10) {
             //another user wants to talk
 //            appManager.getMainDataQueue().add(dialogs.convInvite(users[0]));
             mainDataQueue.add(dialogs.convInvite(users[0]));
@@ -254,7 +264,7 @@ public class WorkerThread implements Runnable {
 
         try {
 
-            buffer = ByteBuffer.allocate(Constants.BUFFER_SIZE);
+
             userName = "";
 
             int response = -1;
@@ -277,21 +287,24 @@ public class WorkerThread implements Runnable {
                 }
                 userName = loginData.getLogin();
 
+//                ByteBuffer tmpBuffer = ByteBuffer.allocate(Constants.BUFFER_SIZE);
+                ByteBuffer tmpBuffer = ClientDataConverter.encodeToBuffer(
+                        new ClientData(userName, loginData.getPassword(), loginData.getMode()));
 
-                buffer.clear();
-                buffer.put((userName + ";").getBytes(Constants.CHARSET));
-                buffer.flip();
-                channel.write(buffer);
+//                buffer.clear();
+//                buffer.put((userName + ";").getBytes(Constants.CHARSET));
+//                buffer.flip();
+                channel.write(tmpBuffer);
                 loginData.clearData();
 
-                buffer.clear();
-                bytesRead = channel.read(buffer);
-                buffer.flip();
-                response = buffer.getInt();
+                tmpBuffer.clear();
+                bytesRead = channel.read(tmpBuffer);
+                tmpBuffer.flip();
+                response = tmpBuffer.getInt();
 
                 if (response == -1) {
-                    userName = "";
-                    loginWindow.dataInvalid(Constants.SIGNUP_ERROR);
+//                    userName = "";
+                    loginWindow.dataInvalid();
 //                    loginWindow.setLoginData(null);
 
                 }
@@ -314,6 +327,7 @@ public class WorkerThread implements Runnable {
             String input;
 
             List<String> removingConvs = new ArrayList<>();
+            buffer = ByteBuffer.allocate(Constants.BUFFER_SIZE);
             while (bytesRead != -1) {
 
                 buffer.clear();
@@ -321,7 +335,7 @@ public class WorkerThread implements Runnable {
                 if (bytesRead != 0) {
                     buffer.flip();
                     response = buffer.getInt();
-                    buffer.compact();
+//                    buffer.compact();
 
                     handleResponse(response);
                 }
@@ -364,9 +378,10 @@ public class WorkerThread implements Runnable {
                             writeThreads.get(inputArray[1]).add("");
                             //remove references to BlockingQueues and JTextAreas mapped to conversation
                             removeMapings(inputArray[1]);
-                        } else if (inputArray[0].equals("a") && clientsNames.contains(inputArray[1])) {
+                            // this if's second argument may be unnecessary
+                        } else if (inputArray[0].equals("a") /*&& clientsNames.contains(inputArray[1])*/) {
                             //send conversation request
-                            buffer.put(("a;" + inputArray[1] + ";").getBytes(Constants.CHARSET));
+                            buffer.put(("a;" + inputArray[1] + ";" + userName + ";").getBytes(Constants.CHARSET));
                         } else {
                             int index = input.indexOf(';');
                             writeThreads.get(input.substring(0,index)).add(input.substring(index+1));
