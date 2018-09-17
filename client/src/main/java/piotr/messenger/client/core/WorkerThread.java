@@ -93,17 +93,16 @@ public class WorkerThread implements Runnable {
 
     private void decodeListFromServer(int listSize) {
         clientsNames.clear();
+        byte[] array = new byte[Constants.RECORD_LENGTH];
         for (int i = 0; i < listSize; i++) {
             int bytesToRead = buffer.getInt();
-            clientsNames.add(getStringFromArray(buffer, bytesToRead));
+            clientsNames.add(getStringFromArray(buffer, array, bytesToRead));
         }
     }
 
     private void handleResponse(int response) {
 
         if (response > 0) {
-
-            logger.info("userList update");
 
             decodeListFromServer(response);
             Collections.sort(clientsNames);
@@ -382,7 +381,7 @@ public class WorkerThread implements Runnable {
                             // this if's second argument may be unnecessary
                         } else if (inputArray[0].equals("a") /*&& clientsNames.contains(inputArray[1])*/) {
                             //send conversation request
-                            buffer.put(("a;" + inputArray[1] + ";").getBytes(Constants.CHARSET));
+                            buffer.put(("a;" + inputArray[1] + ";" + userName + ";").getBytes(Constants.CHARSET));
                         } else {
                             int index = input.indexOf(';');
                             writeThreads.get(input.substring(0,index)).add(input.substring(index+1));

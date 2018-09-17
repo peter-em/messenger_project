@@ -24,7 +24,6 @@ public class ConnectionParameters {
         while (executorPorts.contains(availablePort)) {
             ++availablePort;
         }
-        System.out.println("availablePort: " + availablePort);
         executorPorts.add(availablePort);
         return availablePort;
     }

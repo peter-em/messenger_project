@@ -8,6 +8,7 @@ public class Constants {
     // COMMON
     public static final Charset CHARSET = Charset.forName("UTF-8");
     public static final int BUFFER_SIZE = 1024;
+    public static final int RECORD_LENGTH = 32;
 
     // CONNECTION PARAMETERS
     public static final int PORT_NR = 6125;

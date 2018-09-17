@@ -5,28 +5,31 @@ import org.springframework.stereotype.Component;
 import piotr.messenger.library.util.ClientData;
 
 import java.nio.channels.SocketChannel;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.Collection;
+import java.util.Map;
+import java.util.HashMap;
+import java.util.Set;
 
 @Component
 public class UsersDatabase {
 
-    private List<String> clients;
-    private List<SocketChannel> channels;
+    private Map<String, SocketChannel> connectedClients;
     private UsersJDBCTemplate mysqlTable;
 
     public UsersDatabase() {
-        clients = new ArrayList<>();
-        channels = new ArrayList<>();
+        connectedClients = new HashMap<>();
     }
 
     public boolean hasUser(String userName) {
-        return clients.contains(userName);
+        return null != connectedClients.get(userName);
+    }
+
+    public boolean hasUser(SocketChannel channel) {
+        return connectedClients.values().contains(channel);
     }
 
     public void addUser(String userName, SocketChannel channel) {
-        clients.add(userName);
-        channels.add(channel);
+        connectedClients.put(userName, channel);
     }
 
     public boolean verifyClient(ClientData data) {
@@ -42,26 +45,25 @@ public class UsersDatabase {
         return false;
     }
 
-    public List<String> getUsers() {
-        return clients;
+    public int connectedSize() {
+        return connectedClients.size();
     }
 
-
-    public String getUser(SocketChannel channel) {
-        return clients.get(channels.indexOf(channel));
+    public Set<String> getUsers() {
+        return connectedClients.keySet();
     }
+
+    public Collection<SocketChannel> getChannels() {
+        return connectedClients.values();
+    }
+
 
     public SocketChannel getChannel(String userName) {
-        int index = clients.indexOf(userName);
-        if (index != -1)
-            return channels.get(index);
-        else
-            return null;
+        return connectedClients.get(userName);
     }
 
     public void dropUser(SocketChannel channel) {
-        clients.remove(channels.indexOf(channel));
-        channels.remove(channel);
+        connectedClients.values().remove(channel);
     }
 
     @Autowired

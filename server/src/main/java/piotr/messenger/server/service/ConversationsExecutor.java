@@ -53,7 +53,6 @@ public class ConversationsExecutor {
     public void cleanAfterWorker() throws InterruptedException {
         while (!endDataQueue.isEmpty()) {
             ConversationEnd data = endDataQueue.take();
-//            handlersPorts.remove(new Integer(data.getPortNr()));
             parameters.deletePort(data.getPortNr());
             activePairs.remove(data.getConvPair());
             --activeWorkersCounter;

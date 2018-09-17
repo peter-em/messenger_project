@@ -25,7 +25,6 @@ public class DataFlowService {
 
     private ConversationService conversationService;
     private NewClientService newClientService;
-    private Map<SocketChannel, Boolean> clientsAuthenticationMap;
     private boolean updateClietsUserList;
     private UsersDatabase usersDatabase;
     // mapping socketChannels to List of ByteBuffers
@@ -36,7 +35,6 @@ public class DataFlowService {
 
     public DataFlowService(Selector selector) {
         this.selector = selector;
-        clientsAuthenticationMap = new HashMap<>();
         pendingData = new HashMap<>();
     }
 
@@ -58,9 +56,7 @@ public class DataFlowService {
     private void dropRegisteredClient(SocketChannel client) {
 
         usersDatabase.dropUser(client);
-        clientsAuthenticationMap.remove(client);
         updateClietsUserList = true;
-
     }
 
     public void acceptClient(ServerSocketChannel serverSocket) throws IOException {
@@ -70,13 +66,11 @@ public class DataFlowService {
         newClient.configureBlocking(false);
         //register new client with selector, prepared for reading incoming data
         newClient.register(selector, SelectionKey.OP_READ);
-        clientsAuthenticationMap.put(newClient, false);
         pendingData.put(newClient, new LinkedList<>());
-
     }
 
     private boolean isAuthenticated(SocketChannel client) {
-        return clientsAuthenticationMap.get(client);
+        return usersDatabase.hasUser(client);
     }
 
     public void readClientData(SocketChannel clientSocket) throws IOException {
@@ -98,20 +92,16 @@ public class DataFlowService {
             if (isAuthenticated(clientSocket)) {
                 dropRegisteredClient(clientSocket);
             }
-            clientsAuthenticationMap.remove(clientSocket);
-//            key.cancel();
             clientSocket.close();
             logger.debug("client dropping");
             readBuffer.clear();
             return;
         }
 
-//        readBuffer.flip();
         if (isAuthenticated(clientSocket)) {
             conversationService.handleData(readBuffer, clientSocket);
         } else {
             if (newClientService.handleData(readBuffer, clientSocket)) {
-                clientsAuthenticationMap.put(clientSocket, true);
                 toggleUpdateClients();
             }
         }
@@ -145,7 +135,7 @@ public class DataFlowService {
         executor.terminateExecutor();
     }
 
-    public void toggleUpdateClients() {
+    private void toggleUpdateClients() {
         updateClietsUserList = true;
     }
 
@@ -156,29 +146,20 @@ public class DataFlowService {
     }
 
     private void sendUserListToClients() {
-        logger.info("sendUserList");
-        ByteBuffer buffer = prepareUserList();
 
         //update all connected usersDatabase with information
         //about quantity and logins of active users
+
+        ByteBuffer buffer = prepareUserList();
         buffer.flip();
-
-
-
-        clientsAuthenticationMap.forEach((key, value) -> {
-            logger.info("value: {}", value);
-            if (value) send(key, buffer.array());
-        });
-//        for (SocketChannel clnt : usersDatabase.getChannels()) {
-//            send(clnt, buffer.array());
-//        }
+        usersDatabase.getChannels().forEach(channel -> send(channel, buffer.array()));
         updateClietsUserList = false;
     }
 
     private ByteBuffer prepareUserList() {
         ByteBuffer buffer = ByteBuffer.allocate(Constants.BUFFER_SIZE);
 
-        buffer.putInt(usersDatabase.getUsers().size());
+        buffer.putInt(usersDatabase.connectedSize());
         usersDatabase.getUsers().forEach(user -> {
             buffer.putInt(user.length());
             buffer.put(user.getBytes(Constants.CHARSET));

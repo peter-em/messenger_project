@@ -5,6 +5,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
+import piotr.messenger.library.Constants;
 
 import javax.annotation.PostConstruct;
 import javax.annotation.Resource;
@@ -25,8 +26,12 @@ public class UsersJDBCTemplate implements UsersDAO<UserSQL> {
                 "(" +
                 "  UserID       INT AUTO_INCREMENT" +
                 "    PRIMARY KEY," +
-                "  login        VARCHAR(32) NOT NULL UNIQUE," +
-                "  password     VARCHAR(32) NOT NULL," +
+                "  login        VARCHAR(" +
+                Constants.RECORD_LENGTH +
+                ") NOT NULL UNIQUE," +
+                "  password     VARCHAR(" +
+                Constants.RECORD_LENGTH +
+                ") NOT NULL," +
                 "  registered   TIMESTAMP        NULL" +
                 ")" +
                 "  ENGINE = InnoDB;";

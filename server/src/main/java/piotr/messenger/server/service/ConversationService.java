@@ -25,26 +25,26 @@ public class ConversationService {
     public void handleData(ByteBuffer readBuffer, SocketChannel clientRead) {
 
         //Veryfied client tries to create new conversation
-//        ConversationPair pair;
         String[] userData = (new String(readBuffer.array(), Constants.CHARSET)).split(";");
-
+        readBuffer.clear();
         //userData[0] holds info about type of message (ask for, refuse, confirm conversation)
         //userData[1] holds info about receiver of this request
+        //userData[2] holds login of request sender
+        ConversationPair pair;
         switch (userData[0]) {
             case Constants.C_ASK:
 //				    logger.debug("ASK");
                 if (usersDatabase.hasUser(userData[1])) {
                     SocketChannel askedChannel = usersDatabase.getChannel(userData[1]);
 
-                    String askingUser = usersDatabase.getUser(clientRead);
+                    String askingUser = userData[2];
 
-                    ConversationPair convPair = new ConversationPair(clientRead, askedChannel);
+                    pair = new ConversationPair(clientRead, askedChannel);
 
-                    readBuffer.clear();
-                    if (!executor.hasPair(convPair)) {
+                    if (!executor.hasPair(pair)) {
                         //asked user available, no such conversation started
 //                        pendingPairs.add(convPair);
-                        executor.addPendingPair(convPair);
+                        executor.addPendingPair(pair);
                         readBuffer.putInt(-10);
                         readBuffer.put((askingUser.concat(";")).getBytes(Constants.CHARSET));
                         readBuffer.flip();
@@ -64,7 +64,7 @@ public class ConversationService {
             case Constants.C_REFUSE:
 //				    logger.debug("REFUSE");
                 //user refused, inform client sending request
-                ConversationPair pair = new ConversationPair(clientRead, usersDatabase.getChannel(userData[1]));
+                pair = new ConversationPair(clientRead, usersDatabase.getChannel(userData[1]));
 
 //                pendingPairs.remove(pair);
                 if (pair.hasNullClient()) {
@@ -81,14 +81,14 @@ public class ConversationService {
             case Constants.C_ACCEPT:
 //				    logger.debug("ACCEPT");
 
-                /*ConversationPair */pair = new ConversationPair(clientRead, usersDatabase.getChannel(userData[1]));
+                pair = new ConversationPair(clientRead, usersDatabase.getChannel(userData[1]));
                 if (pair.hasNullClient()) {
 //                        logger.debug("ACCEPT - has null");
                     return;
                 }
 
                 if (executor.createNewWorker(pair)) {
-                    readBuffer.clear();
+
                     readBuffer.putInt(-40);
                     readBuffer.put((parameters.getLastUsedPort() + ";" + parameters.getHostAddress() + ";"
                             + userData[1] + ";" + userData[2] + ";").getBytes(Constants.CHARSET));
