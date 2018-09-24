@@ -41,7 +41,6 @@ public class DataFlowService {
     @PostConstruct
     private void initServices() {
         conversationService.setDataFlowService(this);
-        newClientService.setDataFlowService(this);
         logger = LoggerFactory.getLogger(DataFlowService.class);
     }
 
@@ -55,8 +54,10 @@ public class DataFlowService {
 
     private void dropRegisteredClient(SocketChannel client) {
 
-        usersDatabase.dropUser(client);
-        updateClietsUserList = true;
+        if (isAuthenticated(client)) {
+            usersDatabase.dropUser(client);
+            updateClietsUserList = true;
+        }
     }
 
     public void acceptClient(ServerSocketChannel serverSocket) throws IOException {
@@ -83,27 +84,31 @@ public class DataFlowService {
             bytesRead = clientSocket.read(readBuffer);
         } catch (IOException ioEx) {
             //exception caused by client disconnecting 'unproperly'
-            //cancel 'SelectionKey key' and close corresponding channel
             logger.info("Unexpected end of connection ({}).", ioEx.getMessage());
         }
 
         if (bytesRead <= 0) {
-            //client ended connection clearly, server closes corresponding channel
-            if (isAuthenticated(clientSocket)) {
-                dropRegisteredClient(clientSocket);
-            }
+            //client ended connection, server closes corresponding channel
+            dropRegisteredClient(clientSocket);
             clientSocket.close();
-            logger.debug("client dropping");
-            readBuffer.clear();
             return;
         }
 
+        readBuffer.flip();
         if (isAuthenticated(clientSocket)) {
             conversationService.handleData(readBuffer, clientSocket);
         } else {
-            if (newClientService.handleData(readBuffer, clientSocket)) {
+            // send client a response to veryfication/registration request
+            // success (0) or failure (-1 when verification failed, -2 if such client has already logged in)
+            int response = newClientService.handleData(readBuffer, clientSocket);
+
+            if (response == 0) {
                 toggleUpdateClients();
             }
+            readBuffer.clear();
+            readBuffer.putInt(response);
+            readBuffer.flip();
+            send(clientSocket, readBuffer.array());
         }
     }
 
@@ -114,21 +119,11 @@ public class DataFlowService {
         }
         pendingData.get(clientSocket).clear();
 
-
-//        if (buffer.remaining() > 0) {
-//            logger.error("!!! buffer was not fully emptied !!!");
-//        }
-
-
     }
 
-    public void cleanupClosedConversations() {
+    public void cleanupClosedConversations() throws InterruptedException {
         //clear leftovers from terminated conversation handler
-        try {
             executor.cleanAfterWorker();
-        } catch (InterruptedException abqEx) {
-            logger.error("ArrayBlockingQueue error - " + abqEx.getMessage());
-        }
     }
 
     public void terminateHandlers() {

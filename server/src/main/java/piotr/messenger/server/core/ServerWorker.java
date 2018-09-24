@@ -34,9 +34,9 @@ public class ServerWorker implements Runnable {
     @Override
 	public void run() {
 
-        boolean runServer = openSocket();
+        openSocket();
 
-        while (runServer) {
+        while (!Thread.interrupted()) {
 			try {
 
                 dataFlowService.cleanupClosedConversations();
@@ -72,8 +72,10 @@ public class ServerWorker implements Runnable {
                         + ioEx.getMessage());
 			} catch (CancelledKeyException cancelled) {
 			    logger.error("Cancelled ({}).", cancelled.getMessage());
-//			    cancelled.printStackTrace();
-			    runServer = false;
+                Thread.currentThread().interrupt();
+            } catch (InterruptedException abqEx) {
+                logger.error("ArrayBlockingQueue error ({})", abqEx.getMessage());
+                Thread.currentThread().interrupt();
             }
 		}
 
@@ -82,7 +84,7 @@ public class ServerWorker implements Runnable {
 		closeSocket();
 	}
 
-	/* private -> testing */ boolean openSocket() {
+	private void openSocket() {
 		try {
 			serverSocket = ServerSocketChannel.open();
 			serverSocket.configureBlocking(false);
@@ -90,10 +92,10 @@ public class ServerWorker implements Runnable {
 			serverSocket.register(selector, SelectionKey.OP_ACCEPT);
 		} catch (IOException ioEx) {
             logger.error("Problem occured while opening listening port - ({}).", ioEx.getMessage());
-            return false;
+            Thread.currentThread().interrupt();
+            return;
 		}
         logger.info("Starting server, port in use: {}.", parameters.getHostPort());
-		return true;
 	}
 
 	private void closeSocket() {

@@ -1,5 +1,6 @@
 package piotr.messenger.server.database;
 
+import lombok.Getter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import piotr.messenger.library.util.ClientData;
@@ -13,7 +14,7 @@ import java.util.Set;
 @Component
 public class UsersDatabase {
 
-    private Map<String, SocketChannel> connectedClients;
+    private @Getter Map<String, SocketChannel> connectedClients;
     private UsersJDBCTemplate mysqlTable;
 
     public UsersDatabase() {

@@ -8,7 +8,6 @@ import org.springframework.stereotype.Component;
 import piotr.messenger.library.Constants;
 
 import javax.annotation.PostConstruct;
-import javax.annotation.Resource;
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -17,8 +16,12 @@ import java.util.List;
 @EnableAutoConfiguration
 public class UsersJDBCTemplate implements UsersDAO<UserSQL> {
 
-    @Resource private JdbcTemplate jdbc;
+    private JdbcTemplate jdbc;
     private final Logger logger = LoggerFactory.getLogger(UsersJDBCTemplate.class);
+
+    public UsersJDBCTemplate(JdbcTemplate jdbc) {
+        this.jdbc = jdbc;
+    }
 
     @PostConstruct
     private void init() {
@@ -69,12 +72,4 @@ public class UsersJDBCTemplate implements UsersDAO<UserSQL> {
 
     }
 
-//    @Override
-//    public List<UserSQL> listUsers() {return null;}
-
-//    @Override
-//    public void delete(String login) {}
-
-//    @Override
-//    public void update(String login, String password) {}
 }

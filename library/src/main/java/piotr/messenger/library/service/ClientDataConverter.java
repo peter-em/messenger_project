@@ -3,6 +3,7 @@ package piotr.messenger.library.service;
 import piotr.messenger.library.Constants;
 import piotr.messenger.library.util.ClientData;
 
+import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 
 public class ClientDataConverter {
@@ -14,7 +15,6 @@ public class ClientDataConverter {
 
     public static ClientData decodeFromBuffer(ByteBuffer buffer) {
         byte[] array = new byte[Constants.RECORD_LENGTH];
-        buffer.flip();
         int bytesToRead = buffer.getInt();
         String login = getStringFromArray(buffer, array, bytesToRead);
         bytesToRead = buffer.getInt();
@@ -30,7 +30,6 @@ public class ClientDataConverter {
         buffer.putInt(clientData.getPassword().length());
         buffer.put(clientData.getPassword().getBytes(Constants.CHARSET));
         buffer.putInt(clientData.getConnectMode());
-        buffer.flip();
         return buffer;
     }
 
