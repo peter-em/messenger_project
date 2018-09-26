@@ -91,6 +91,8 @@ public class ServerWorker implements Runnable {
             serverSocket.socket().bind(new InetSocketAddress(parameters.getHostAddress(), parameters.getHostPort()));
 			serverSocket.register(selector, SelectionKey.OP_ACCEPT);
 		} catch (IOException ioEx) {
+		    ioEx.printStackTrace(System.err);
+            logger.error("Co to kurla jest?! {}", ioEx.toString());
             logger.error("Problem occured while opening listening port - ({}).", ioEx.getMessage());
             Thread.currentThread().interrupt();
             return;

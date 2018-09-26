@@ -10,9 +10,9 @@ import java.util.List;
 @Component
 public class ConnectionParameters {
 
-    private @Getter final String hostAddress;
-    private @Getter final int hostPort;
-    private final List<Integer> executorPorts;
+    private final @Getter String hostAddress;
+    private final @Getter int hostPort;
+    private final @Getter List<Integer> executorPorts;
 
     public ConnectionParameters() {
         hostAddress = Constants.HOST_ADDRESS;
@@ -34,7 +34,7 @@ public class ConnectionParameters {
     }
 
     public void deletePort(int port) {
-        executorPorts.remove(new Integer(port));
+        executorPorts.remove((Integer) port);
     }
 
 }

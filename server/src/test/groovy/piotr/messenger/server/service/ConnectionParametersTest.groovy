@@ -28,4 +28,16 @@ class ConnectionParametersTest extends Specification {
         then:
         port == parameters.getWorkerPort()
     }
+
+    def "Should remove assigned port from list"() {
+        given: "connectionParameters class with one port assigned"
+        ConnectionParameters parameters = new ConnectionParameters()
+        def port = parameters.getWorkerPort()
+
+        when: "assigned port is removed from the list"
+        parameters.deletePort(port)
+
+        then: "list size should be 0"
+        parameters.getExecutorPorts().size() == 0
+    }
 }

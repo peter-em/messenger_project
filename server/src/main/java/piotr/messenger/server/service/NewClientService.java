@@ -16,6 +16,7 @@ import java.nio.channels.SocketChannel;
 public class NewClientService {
 
     private UsersDatabase usersDatabase;
+    private ClientsConnectionService connectionService;
 
 
     public int handleData(ByteBuffer readBuffer, SocketChannel clientRead) {
@@ -24,7 +25,13 @@ public class NewClientService {
         try {
             clientData = ClientDataConverter.decodeFromBuffer(readBuffer);
         } catch (BufferUnderflowException | IndexOutOfBoundsException ex) {
-            return -1;
+            // TODO consider making this catch throw new Exception
+            // TODO (i.e InvalidClientException) instead of returning -4
+            return -4;
+        }
+
+        if (connectionService.isAuthenticated(clientData.getLogin())) {
+            return -2;
         }
 
         //perform client verification
@@ -37,10 +44,7 @@ public class NewClientService {
 
 
         if (isVerified) {
-            if (usersDatabase.hasUser(clientData.getLogin())) {
-                return -2;
-            }
-            usersDatabase.addUser(clientData.getLogin(), clientRead);
+            connectionService.addUser(clientData.getLogin(), clientRead);
             return 0;
         }
         return -1;

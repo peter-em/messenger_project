@@ -25,18 +25,11 @@ public class UsersJDBCTemplate implements UsersDAO<UserSQL> {
 
     @PostConstruct
     private void init() {
-        String query = "CREATE TABLE IF NOT EXISTS users" +
-                "(" +
-                "  UserID       INT AUTO_INCREMENT" +
-                "    PRIMARY KEY," +
-                "  login        VARCHAR(" +
-                Constants.RECORD_LENGTH +
-                ") NOT NULL UNIQUE," +
-                "  password     VARCHAR(" +
-                Constants.RECORD_LENGTH +
-                ") NOT NULL," +
-                "  registered   TIMESTAMP        NULL" +
-                ")" +
+        String query = "CREATE TABLE IF NOT EXISTS users(" +
+                "  userID       INT AUTO_INCREMENT PRIMARY KEY," +
+                "  login        VARCHAR(" + Constants.RECORD_LENGTH + ") NOT NULL UNIQUE," +
+                "  password     VARCHAR(" + Constants.RECORD_LENGTH + ") NOT NULL," +
+                "  registered   TIMESTAMP NULL" + ")" +
                 "  ENGINE = InnoDB;";
         jdbc.execute(query);
     }

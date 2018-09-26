@@ -16,14 +16,14 @@ class NewClientServiceTest extends Specification {
     @Unroll
     def 'Should return -1 when data in ByteBuffer #reason'() {
         given:
-        def service = new NewClientService(null)
+        def service = new NewClientService(null, null)
 
         when:
         buffer.flip()
         def result = service.handleData(buffer, null)
 
         then:
-        result == -1
+        result == -4
 
         where:
         reason                                  | buffer

@@ -3,10 +3,11 @@ package piotr.messenger.library.service;
 import piotr.messenger.library.Constants;
 import piotr.messenger.library.util.ClientData;
 
-import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 
 public class ClientDataConverter {
+
+    private ClientDataConverter() {}
 
     public static String getStringFromArray(ByteBuffer buffer, byte[] array, int size) {
         buffer.get(array, 0, size);
