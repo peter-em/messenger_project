@@ -63,7 +63,7 @@ public class ConvKeyListener extends KeyAdapter {
                     }
 
                     mainDataQueue.add(tabName + ";" + tmpWrite.getText());
-                    WorkerThread.printMessage("me", tabName, tmpWrite.getText(), printAreas.get(tabName));
+                    WorkerThread.printMessage("me", tmpWrite.getText(), printAreas.get(tabName));
                     tmpWrite.setText("");
                 }
             }

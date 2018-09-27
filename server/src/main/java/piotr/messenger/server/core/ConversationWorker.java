@@ -152,13 +152,7 @@ public class ConversationWorker implements Runnable {
 			//exception caused by client breaking connection
 			//cancel selection key, close channel
             logger.error("Reading data error. Closing channel ({}).", ioEx.getMessage());
-			key.cancel();
-			if (client1.isOpen())
-				client1.close();
-			if (client2.isOpen())
-				client2.close();
-			isRunning = false;
-			return;
+            bytesRead = -1;
 		}
 
 		if (bytesRead == -1) {

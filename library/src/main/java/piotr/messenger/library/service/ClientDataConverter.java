@@ -7,6 +7,8 @@ import java.nio.ByteBuffer;
 
 public class ClientDataConverter {
 
+    private ClientDataConverter() {}
+
     public static String getStringFromArray(ByteBuffer buffer, byte[] array, int size) {
         buffer.get(array, 0, size);
         return new String(array, 0, size, Constants.CHARSET);
@@ -14,7 +16,6 @@ public class ClientDataConverter {
 
     public static ClientData decodeFromBuffer(ByteBuffer buffer) {
         byte[] array = new byte[Constants.RECORD_LENGTH];
-        buffer.flip();
         int bytesToRead = buffer.getInt();
         String login = getStringFromArray(buffer, array, bytesToRead);
         bytesToRead = buffer.getInt();
@@ -30,7 +31,6 @@ public class ClientDataConverter {
         buffer.putInt(clientData.getPassword().length());
         buffer.put(clientData.getPassword().getBytes(Constants.CHARSET));
         buffer.putInt(clientData.getConnectMode());
-        buffer.flip();
         return buffer;
     }
 

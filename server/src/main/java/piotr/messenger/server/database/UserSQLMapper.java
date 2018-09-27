@@ -13,7 +13,7 @@ public class UserSQLMapper implements RowMapper<UserSQL> {
         UserSQL user = new UserSQL();
         user.setLogin(resultSet.getString(Constants.COL_LOGIN));
         user.setPassword(resultSet.getString(Constants.COL_PSSWRD));
-        user.setRegisterDate(resultSet.getTimestamp(Constants.COL_REGISER));
+        user.setRegistered(resultSet.getTimestamp(Constants.COL_REGISER));
         return user;
     }
 }

@@ -40,8 +40,8 @@ public class WorkerThread implements Runnable {
 
     private Logger logger;
     private boolean awaitingConv;
-    private ByteBuffer buffer;
     private SocketChannel channel;
+    private ByteBuffer buffer;
     private List<String> convUsers;
     private DialogsHandler dialogs;
     private List<String> clientsNames;
@@ -58,6 +58,7 @@ public class WorkerThread implements Runnable {
 
     public WorkerThread() {
         logger = LoggerFactory.getLogger(WorkerThread.class);
+        channel = null;
         awaitingConv = false;
         convUsers = new LinkedList<>();
         clientsNames = new ArrayList<>();
@@ -69,26 +70,25 @@ public class WorkerThread implements Runnable {
         this.appManager = appManager;
     }
 
-    private SocketChannel connectToServer() {
-        SocketChannel channel = null;
+    private void connectToServer() {
         try {
             channel = SocketChannel.open();
             channel.configureBlocking(true);
             channel.connect(new InetSocketAddress(Constants.HOST_ADDRESS, Constants.PORT_NR));
             int timeOut = 0;
             while (!channel.finishConnect()) {
-                if (timeOut++ > 100)
-                    return null;
+                if (timeOut++ > 100) {
+                    channel = null;
+                    return;
+                }
                 TimeUnit.MILLISECONDS.sleep(100);
             }
         } catch (IOException ioEx) {
             logger.error("Connection problem ({}).", ioEx.getMessage());
-            return null;
+            channel = null;
         } catch (InterruptedException intrEx) {
             logger.error("Main thread interrupted ({}).", intrEx.getMessage());
-//                return false;
         }
-        return channel;
     }
 
     private void decodeListFromServer(int listSize) {
@@ -122,7 +122,6 @@ public class WorkerThread implements Runnable {
         String[] users = usersData.split(";");
         if (response == -10) {
             //another user wants to talk
-//            appManager.getMainDataQueue().add(dialogs.convInvite(users[0]));
             mainDataQueue.add(dialogs.convInvite(users[0]));
             awaitingConv = true;
             convUsers.add(users[0]);
@@ -148,13 +147,13 @@ public class WorkerThread implements Runnable {
         }
     }
 
-    private void sendToServer(ByteBuffer buffer) {
-        try {
-            channel.write(buffer);
-        } catch (IOException ioEx) {
-            logger.error("Writing to server channel failed ({}).", ioEx.getMessage());
-        }
-    }
+//    private void sendToServer(ByteBuffer buffer) {
+//        try {
+//            channel.write(buffer);
+//        } catch (IOException ioEx) {
+//            logger.error("Writing to server channel failed ({}).", ioEx.getMessage());
+//        }
+//    }
 
     //method creating new tab for conversation
     private void createConvPage(String convUser) {
@@ -239,7 +238,7 @@ public class WorkerThread implements Runnable {
 
     }
 
-    public static void printMessage(String sender, String receiver, String message,
+    public static void printMessage(String sender, String message,
                                     JTextArea printArea) {
         //display message in proper conversation tab
         Calendar calendar = Calendar.getInstance();
@@ -255,7 +254,7 @@ public class WorkerThread implements Runnable {
 
         Thread.currentThread().setName("Client_NO_ID");
 
-        channel = connectToServer();
+        connectToServer();
         if (channel == null) {
             logger.info("channel is null");
             performSafeClose();
@@ -271,7 +270,7 @@ public class WorkerThread implements Runnable {
             int bytesRead = 0;
 
             loginWindow.showWindow();
-            while (response == -1) {
+            while (response != 0) {
 
                 Thread.sleep(128);
                 if (!loginWindow.isLoginDataReady()) {
@@ -281,19 +280,15 @@ public class WorkerThread implements Runnable {
                 LoginData loginData = loginWindow.getLoginData();
                 if (loginData == null) {
                     loginWindow.disposeWindow();
-//                    appManager.getAppFrame().setVisible(false);
                     appManager.getAppFrame().dispose();
                     return;
                 }
                 userName = loginData.getLogin();
 
-//                ByteBuffer tmpBuffer = ByteBuffer.allocate(Constants.BUFFER_SIZE);
                 ByteBuffer tmpBuffer = ClientDataConverter.encodeToBuffer(
                         new ClientData(userName, loginData.getPassword(), loginData.getMode()));
 
-//                buffer.clear();
-//                buffer.put((userName + ";").getBytes(Constants.CHARSET));
-//                buffer.flip();
+                tmpBuffer.flip();
                 channel.write(tmpBuffer);
                 loginData.clearData();
 
@@ -302,11 +297,8 @@ public class WorkerThread implements Runnable {
                 tmpBuffer.flip();
                 response = tmpBuffer.getInt();
 
-                if (response == -1) {
-//                    userName = "";
-                    loginWindow.dataInvalid();
-//                    loginWindow.setLoginData(null);
-
+                if (response != 0) {
+                    loginWindow.dataInvalid(response);
                 }
             }
             channel.configureBlocking(false);
@@ -314,10 +306,8 @@ public class WorkerThread implements Runnable {
 
 
             //reveal window app if verification was succesful
-//            appManager.setMainDataQueue(new ArrayBlockingQueue<>(Constants.BLOCKING_SIZE));
 
             appManager.getOwnerName().setText(userName);
-//            setOwnerName(userName);
             appManager.getAppFrame().setVisible(true);
             Thread.currentThread().setName("Client_" + userName);
 
@@ -335,17 +325,14 @@ public class WorkerThread implements Runnable {
                 if (bytesRead != 0) {
                     buffer.flip();
                     response = buffer.getInt();
-//                    buffer.compact();
 
                     handleResponse(response);
                 }
 
 
-//                if (!appManager.getMainDataQueue().isEmpty()) {
                 if (!mainDataQueue.isEmpty()) {
 
                     try {
-//                        input = appManager.getMainDataQueue().take();
                         input = mainDataQueue.take();
                         sendOK = true;
                     } catch (InterruptedException bqEx) {
@@ -385,7 +372,6 @@ public class WorkerThread implements Runnable {
                         } else {
                             int index = input.indexOf(';');
                             writeThreads.get(input.substring(0,index)).add(input.substring(index+1));
-//                    writeThreads.get(tabName).add(tmpWrite.getText());
 
                         }
                     }
@@ -420,7 +406,7 @@ public class WorkerThread implements Runnable {
 
                         } else {
                             // process received message
-                            printMessage(convKey, convKey, input, printAreas.get(convKey));
+                            printMessage(convKey, input, printAreas.get(convKey));
                         }
                     }
                 }

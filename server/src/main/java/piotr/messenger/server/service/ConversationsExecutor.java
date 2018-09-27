@@ -15,12 +15,12 @@ import java.util.concurrent.Executors;
 @Component
 public class ConversationsExecutor {
 
-    private ExecutorService handlersExecutor;
-	private List<ConversationPair> pendingPairs;
-	private List<ConversationPair> activePairs;
-	private ArrayBlockingQueue<ConversationEnd> endDataQueue;
+    private final ExecutorService handlersExecutor;
+	private final List<ConversationPair> pendingPairs;
+	private final List<ConversationPair> activePairs;
+	private final ArrayBlockingQueue<ConversationEnd> endDataQueue;
+	private final ConnectionParameters parameters;
 	private int activeWorkersCounter;
-	private ConnectionParameters parameters;
 
     public ConversationsExecutor(ConnectionParameters parameters) {
         pendingPairs = new ArrayList<>(); 	//or maybe LinkedList<> should be used

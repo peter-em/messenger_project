@@ -1,14 +1,8 @@
 package piotr.messenger.server.database;
 
-import javax.sql.DataSource;
 import java.util.List;
 
 public interface UsersDAO<T> {
-//    /**
-//     * This is the method to be used to initialize
-//     * database resources ie. connection.
-//     */
-//    public void setDataSource(DataSource ds);
 
     /**
      * This is the method to be used to register

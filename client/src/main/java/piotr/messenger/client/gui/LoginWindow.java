@@ -26,10 +26,14 @@ public class LoginWindow {
         MainWindow.centerWindow(loginFrame);
     }
 
-    public void dataInvalid() {
+    public void dataInvalid(int response) {
         dataReady = false;
         if (sendButton.getText().equals(Constants.LOGIN_BUTTON)) {
-            invalidLogin.setText(Constants.LOGIN_ERROR);
+            if (response == -1) {
+                invalidLogin.setText(Constants.LOGIN_ERROR);
+            } else {
+                invalidLogin.setText(Constants.HASLOGGED_ERROR);
+            }
         } else {
             invalidLogin.setText(Constants.REGISTER_ERROR);
         }

@@ -4,7 +4,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import piotr.messenger.library.Constants;
 import piotr.messenger.server.util.ConversationPair;
-import piotr.messenger.server.database.UsersDatabase;
 
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
@@ -14,7 +13,7 @@ import java.nio.channels.SocketChannel;
 public class ConversationService {
 
     private ConversationsExecutor executor;
-    private UsersDatabase usersDatabase;
+    private ClientsConnectionService connectionService;
     private ConnectionParameters parameters;
     private DataFlowService service;
 
@@ -33,9 +32,8 @@ public class ConversationService {
         ConversationPair pair;
         switch (userData[0]) {
             case Constants.C_ASK:
-//				    logger.debug("ASK");
-                if (usersDatabase.hasUser(userData[1])) {
-                    SocketChannel askedChannel = usersDatabase.getChannel(userData[1]);
+                if (connectionService.isAuthenticated(userData[1])) {
+                    SocketChannel askedChannel = connectionService.getChannel(userData[1]);
 
                     String askingUser = userData[2];
 
@@ -43,7 +41,6 @@ public class ConversationService {
 
                     if (!executor.hasPair(pair)) {
                         //asked user available, no such conversation started
-//                        pendingPairs.add(convPair);
                         executor.addPendingPair(pair);
                         readBuffer.putInt(-10);
                         readBuffer.put((askingUser.concat(";")).getBytes(Constants.CHARSET));
@@ -62,13 +59,10 @@ public class ConversationService {
                 break;
 
             case Constants.C_REFUSE:
-//				    logger.debug("REFUSE");
                 //user refused, inform client sending request
-                pair = new ConversationPair(clientRead, usersDatabase.getChannel(userData[1]));
+                pair = new ConversationPair(clientRead, connectionService.getChannel(userData[1]));
 
-//                pendingPairs.remove(pair);
                 if (pair.hasNullClient()) {
-//                        logger.debug("REFUSE - has null");
                     return;
                 }
                 executor.removePendingPair(pair);
@@ -79,11 +73,9 @@ public class ConversationService {
                 break;
 
             case Constants.C_ACCEPT:
-//				    logger.debug("ACCEPT");
 
-                pair = new ConversationPair(clientRead, usersDatabase.getChannel(userData[1]));
+                pair = new ConversationPair(clientRead, connectionService.getChannel(userData[1]));
                 if (pair.hasNullClient()) {
-//                        logger.debug("ACCEPT - has null");
                     return;
                 }
 
@@ -106,8 +98,8 @@ public class ConversationService {
     }
 
     @Autowired
-    public void setUsersDatabase(UsersDatabase usersDatabase) {
-        this.usersDatabase = usersDatabase;
+    public void setConnectionService(ClientsConnectionService connectionService ) {
+        this.connectionService = connectionService;
     }
 
     @Autowired

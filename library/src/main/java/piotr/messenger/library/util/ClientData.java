@@ -1,5 +1,7 @@
 package piotr.messenger.library.util;
 
+import java.util.Objects;
+
 public class ClientData {
 
     private String login;
@@ -39,10 +41,25 @@ public class ClientData {
 
     @Override
     public String toString() {
-        return "ClientData{" +
+        return "ClientData[" +
                 "login='" + login + '\'' +
                 ", password='" + password + '\'' +
-                ", connectMode=" + connectMode +
-                '}';
+                ", connectMode=" + connectMode + ']';
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        ClientData that = (ClientData) o;
+        return getConnectMode() == that.getConnectMode() &&
+                Objects.equals(getLogin(), that.getLogin()) &&
+                Objects.equals(getPassword(), that.getPassword());
+    }
+
+    @Override
+    public int hashCode() {
+
+        return Objects.hash(getLogin(), getPassword(), getConnectMode());
     }
 }

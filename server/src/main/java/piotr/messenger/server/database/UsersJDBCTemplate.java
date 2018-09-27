@@ -8,7 +8,6 @@ import org.springframework.stereotype.Component;
 import piotr.messenger.library.Constants;
 
 import javax.annotation.PostConstruct;
-import javax.annotation.Resource;
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -17,23 +16,20 @@ import java.util.List;
 @EnableAutoConfiguration
 public class UsersJDBCTemplate implements UsersDAO<UserSQL> {
 
-    @Resource private JdbcTemplate jdbc;
+    private JdbcTemplate jdbc;
     private final Logger logger = LoggerFactory.getLogger(UsersJDBCTemplate.class);
+
+    public UsersJDBCTemplate(JdbcTemplate jdbc) {
+        this.jdbc = jdbc;
+    }
 
     @PostConstruct
     private void init() {
-        String query = "CREATE TABLE IF NOT EXISTS users" +
-                "(" +
-                "  UserID       INT AUTO_INCREMENT" +
-                "    PRIMARY KEY," +
-                "  login        VARCHAR(" +
-                Constants.RECORD_LENGTH +
-                ") NOT NULL UNIQUE," +
-                "  password     VARCHAR(" +
-                Constants.RECORD_LENGTH +
-                ") NOT NULL," +
-                "  registered   TIMESTAMP        NULL" +
-                ")" +
+        String query = "CREATE TABLE IF NOT EXISTS users(" +
+                "  userID       INT AUTO_INCREMENT PRIMARY KEY," +
+                "  login        VARCHAR(" + Constants.RECORD_LENGTH + ") NOT NULL UNIQUE," +
+                "  password     VARCHAR(" + Constants.RECORD_LENGTH + ") NOT NULL," +
+                "  registered   TIMESTAMP NULL" + ")" +
                 "  ENGINE = InnoDB;";
         jdbc.execute(query);
     }
@@ -69,12 +65,4 @@ public class UsersJDBCTemplate implements UsersDAO<UserSQL> {
 
     }
 
-//    @Override
-//    public List<UserSQL> listUsers() {return null;}
-
-//    @Override
-//    public void delete(String login) {}
-
-//    @Override
-//    public void update(String login, String password) {}
 }

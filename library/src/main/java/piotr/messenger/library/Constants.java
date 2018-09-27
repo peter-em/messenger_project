@@ -40,6 +40,7 @@ public class Constants {
                     "username and password";
     public static final String LOGIN_ERROR = "Invalid username and/or password!";
     public static final String REGISTER_ERROR = "This username already exists!";
+    public static final String HASLOGGED_ERROR = "This user has already logged in!";
     public static final String TOO_SHORT = "Username too short (min. 3 letters)";
     public static final String PSWD_EMPTY = "Please enter password";
     public static final String SWITCH_TO_LOGIN = "Already registered? Click to Log In";
