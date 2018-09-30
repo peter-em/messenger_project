@@ -43,12 +43,7 @@ public class ClientsConnectionService {
 
         writingBuffers.remove(channel);
         boolean removed = connectedClients.values().remove(channel);
-//        try {
-            channel.close();
-//        } catch (IOException ex) {
-//            throw new IOException("Error occured while closing client's SocketChannel");
-//        }
-
+        channel.close();
         return removed;
     }
 
@@ -76,5 +71,4 @@ public class ClientsConnectionService {
         writingBuffers.get(client).clear();
         return list;
     }
-
 }

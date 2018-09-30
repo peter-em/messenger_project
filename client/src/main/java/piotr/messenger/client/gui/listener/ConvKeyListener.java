@@ -3,7 +3,8 @@ package piotr.messenger.client.gui.listener;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
-import piotr.messenger.client.core.WorkerThread;
+import piotr.messenger.client.service.MessagePrinter;
+import piotr.messenger.client.util.TransferData;
 
 import javax.swing.JTabbedPane;
 import javax.swing.JTextArea;
@@ -20,7 +21,7 @@ public class ConvKeyListener extends KeyAdapter {
 
     private Map<String, JTextArea> writeAreas;
     private Map<String, JTextArea> printAreas;
-    private ArrayBlockingQueue<String> mainDataQueue;
+    private ArrayBlockingQueue<TransferData> mainDataQueue;
     private JTabbedPane appTabbs;
 
 
@@ -35,7 +36,7 @@ public class ConvKeyListener extends KeyAdapter {
     }
 
     @Autowired
-    public void setMainDataQueue(ArrayBlockingQueue<String> mainDataQueue) {
+    public void setMainDataQueue(ArrayBlockingQueue<TransferData> mainDataQueue) {
         this.mainDataQueue = mainDataQueue;
     }
 
@@ -55,15 +56,15 @@ public class ConvKeyListener extends KeyAdapter {
             if (idx > 0) {
                 String tabName = appTabbs.getTitleAt(idx);
                 JTextArea tmpWrite = writeAreas.get(tabName);
-                if (tmpWrite.getText().length() != 0) {
+                if (e.getModifiers() == InputEvent.SHIFT_MASK) {
+                    tmpWrite.append("\n");
+                    return;
+                }
+                String text = tmpWrite.getText().trim();
+                if (text.length() != 0) {
 
-                    if (e.getModifiers() == InputEvent.SHIFT_MASK) {
-                        tmpWrite.append("\n");
-                        return;
-                    }
-
-                    mainDataQueue.add(tabName + ";" + tmpWrite.getText());
-                    WorkerThread.printMessage("me", tmpWrite.getText(), printAreas.get(tabName));
+                    mainDataQueue.add(new TransferData(tabName, text));
+                    MessagePrinter.printMessage("me", text, printAreas.get(tabName));
                     tmpWrite.setText("");
                 }
             }

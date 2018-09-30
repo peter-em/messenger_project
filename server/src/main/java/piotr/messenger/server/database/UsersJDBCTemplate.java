@@ -37,12 +37,12 @@ public class UsersJDBCTemplate implements UsersDAO<UserSQL> {
     @Override
     public void registerUser(String login, String password) {
 
-        logger.info("REGISTER: '{}' '{}'", login, password);
         Timestamp timestamp = Timestamp.valueOf(LocalDateTime.now());
         jdbc.update("INSERT INTO " +
                 "users (login, password, registered) " +
                 "VALUES (?, ?, ?)",
                 login, password, timestamp);
+        logger.info("REGISTER: '{}' '{}', date: {}", login, password, timestamp);
     }
 
     @Override

@@ -4,6 +4,8 @@ import piotr.messenger.library.Constants;
 import piotr.messenger.library.util.ClientData;
 
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.List;
 
 public class ClientDataConverter {
 
@@ -32,6 +34,16 @@ public class ClientDataConverter {
         buffer.put(clientData.getPassword().getBytes(Constants.CHARSET));
         buffer.putInt(clientData.getConnectMode());
         return buffer;
+    }
+
+    public static List<String> decodeListFromServer(int listSize, ByteBuffer buffer) {
+        List<String> clientsNames = new ArrayList<>(listSize);
+        byte[] array = new byte[Constants.RECORD_LENGTH];
+        for (int i = 0; i < listSize; i++) {
+            int bytesToRead = buffer.getInt();
+            clientsNames.add(getStringFromArray(buffer, array, bytesToRead));
+        }
+        return clientsNames;
     }
 
 }

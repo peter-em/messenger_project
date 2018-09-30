@@ -1,46 +1,32 @@
 package piotr.messenger.client.gui;
 
+import lombok.Getter;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
+import org.springframework.stereotype.Component;
 import piotr.messenger.client.config.AutoConfig;
 import piotr.messenger.client.core.WorkerThread;
 
-import javax.swing.JFrame;
-import javax.swing.JPanel;
-import javax.swing.JButton;
-import javax.swing.JTabbedPane;
-import javax.swing.JTextField;
-import javax.swing.JLabel;
+import javax.annotation.PostConstruct;
+import javax.swing.*;
 import java.awt.GraphicsEnvironment;
 import java.awt.Point;
 
-
+@Component
 public class MainWindow {
 
-
-    private JFrame appFrame;
-    private JButton closeTab;
-    private JTabbedPane appTabbs;
-    private JTextField chooseUser;
-    private JLabel ownerName;
-    private JLabel usersCount;
+    private @Getter JFrame mainFrame;
+    private @Getter JTabbedPane appTabbs;
+    private @Getter JLabel ownerName;
+    private @Getter JLabel usersCount;
+    private @Getter DefaultListModel<String> defListModel;
 
 
-	public MainWindow() {
-
-        AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext(AutoConfig.class);
-        appFrame = context.getBean("mainFrame", JFrame.class);
-        ownerName = context.getBean("ownerName", JLabel.class);
-        usersCount = context.getBean("usersCount", JLabel.class);
-        appTabbs = context.getBean(JTabbedPane.class);
-
-        WorkerThread worker = context.getBean(WorkerThread.class);
-        worker.init(this);
-		Thread task = new Thread(worker);
-		task.start();
-
-        centerWindow(appFrame);
-
-	}
+    @PostConstruct
+    public void initWindow() {
+        MainWindow.centerWindow(mainFrame);
+    }
 
     //centering app on the screen
     public static void centerWindow(JFrame window) {
@@ -51,26 +37,34 @@ public class MainWindow {
         window.setLocation(point.x - width/2, point.y - height);
     }
 
-
-    // SETTERS AND GETTERS
-    public JFrame getAppFrame() {
-        return appFrame;
+    public void disposeWindow() {
+        mainFrame.setVisible(false);
+        mainFrame.dispose();
     }
 
-    public JPanel getMainPanel() {
-        return (JPanel) appFrame.getContentPane();
+    @Autowired
+    public void setMainFrame(JFrame mainFrame) {
+        this.mainFrame = mainFrame;
     }
 
-    public JTabbedPane getAppPages() {
-        return appTabbs;
+    @Autowired
+    public void setAppTabbs(JTabbedPane appTabbs) {
+        this.appTabbs = appTabbs;
     }
 
-    public JLabel getOwnerName() {
-        return ownerName;
+    @Autowired
+    public void setOwnerName(JLabel ownerName) {
+        this.ownerName = ownerName;
     }
 
-    public JLabel getUsersCount() {
-        return usersCount;
+    @Autowired
+    public void setUsersCount(JLabel usersCount) {
+        this.usersCount = usersCount;
+    }
+
+    @Autowired
+    public void setDefListModel(DefaultListModel<String> defListModel) {
+        this.defListModel = defListModel;
     }
 
 }

@@ -7,8 +7,11 @@ import org.springframework.stereotype.Component;
 import javax.swing.JPanel;
 import javax.swing.JOptionPane;
 
-/*
-* class used to display pop-up information window
+/**
+ * class used to display pop-up information window
+ * Example of using this class:
+ * DialogsHandler handler = new DialogsHandler(parentPanel (of type JPanel));
+ * handler.refused(username (of type String));
 * */
 
 @Component

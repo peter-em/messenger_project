@@ -3,8 +3,8 @@ package piotr.messenger.client.gui.listener.button;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
-import piotr.messenger.client.util.LoginData;
 import piotr.messenger.library.Constants;
+import piotr.messenger.library.util.ClientData;
 
 import javax.swing.JTextField;
 import javax.swing.JPasswordField;
@@ -38,7 +38,7 @@ public class SendLoginDataButtonListener extends LoginDataActionListener {
     @Override
     public void actionPerformed(ActionEvent e) {
 
-        String username = loginField.getText();
+        String username = loginField.getText().trim();
         String password = new String(passwordField.getPassword());
 
         if (username.length() < 3) {
@@ -48,11 +48,11 @@ public class SendLoginDataButtonListener extends LoginDataActionListener {
             invalidData.setText(Constants.PSWD_EMPTY);
             invalidData.setVisible(true);
         } else {
-            LoginData loginData = new LoginData();
+            ClientData loginData = new ClientData();
             loginData.setLogin(username.trim());
             loginData.setPassword(password);
             int mode = (e.getActionCommand().equals(Constants.LOGIN_BUTTON)?Constants.LOGIN_MODE:Constants.REGISTER_MODE);
-            loginData.setMode(mode);
+            loginData.setConnectMode(mode);
             loginWindow.setLoginData(loginData);
             invalidData.setVisible(false);
         }

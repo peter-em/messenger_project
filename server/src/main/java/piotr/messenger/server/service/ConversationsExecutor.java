@@ -16,14 +16,12 @@ import java.util.concurrent.Executors;
 public class ConversationsExecutor {
 
     private final ExecutorService handlersExecutor;
-	private final List<ConversationPair> pendingPairs;
 	private final List<ConversationPair> activePairs;
 	private final ArrayBlockingQueue<ConversationEnd> endDataQueue;
 	private final ConnectionParameters parameters;
 	private int activeWorkersCounter;
 
     public ConversationsExecutor(ConnectionParameters parameters) {
-        pendingPairs = new ArrayList<>(); 	//or maybe LinkedList<> should be used
         activePairs = new ArrayList<>();
         handlersExecutor = Executors.newFixedThreadPool(Constants.CONV_MAX);
         endDataQueue = new ArrayBlockingQueue<>(Constants.CONV_MAX*2);
@@ -34,10 +32,8 @@ public class ConversationsExecutor {
     public boolean createNewWorker(ConversationPair pair) {
 
         //conversation request accepted
-        pendingPairs.remove(pair);
-        activePairs.add(pair);
-
-        if (activeWorkersCounter < Constants.CONV_MAX) {
+        if (!activePairs.contains(pair) && activeWorkersCounter < Constants.CONV_MAX) {
+            activePairs.add(pair);
 
             //create new handler and send usersDatabase connection data
             //if limit of conversations was not reached
@@ -46,7 +42,6 @@ public class ConversationsExecutor {
             handlersExecutor.execute(worker);
             return true;
         }
-        activePairs.remove(pair);
         return false;
     }
 
@@ -57,18 +52,6 @@ public class ConversationsExecutor {
             activePairs.remove(data.getConvPair());
             --activeWorkersCounter;
         }
-    }
-
-    public void addPendingPair(ConversationPair pair) {
-        pendingPairs.add(pair);
-    }
-
-    public void removePendingPair(ConversationPair pair) {
-        pendingPairs.remove(pair);
-    }
-
-    public boolean hasPair(ConversationPair pair) {
-        return pendingPairs.contains(pair) || activePairs.contains(pair);
     }
 
     public void terminateExecutor() {

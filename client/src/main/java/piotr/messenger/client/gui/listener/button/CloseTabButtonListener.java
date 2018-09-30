@@ -2,6 +2,8 @@ package piotr.messenger.client.gui.listener.button;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+import piotr.messenger.client.util.TransferData;
+import piotr.messenger.library.Constants;
 
 import javax.swing.*;
 import java.awt.event.ActionEvent;
@@ -23,7 +25,7 @@ public class CloseTabButtonListener extends MainWindowActionListener {
         int idx = appTabbs.getSelectedIndex();
         if (idx > 0) {
             String tabName = appTabbs.getTitleAt(idx);
-            mainDataQueue.add("t;" + tabName + ";");
+            mainDataQueue.add(new TransferData(Constants.C_TERMINATE, tabName));
             appTabbs.removeTabAt(idx);
 
         }
