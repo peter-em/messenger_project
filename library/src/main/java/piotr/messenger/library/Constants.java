@@ -5,6 +5,8 @@ import java.nio.charset.Charset;
 
 public class Constants {
 
+    private Constants() {}
+
     // COMMON
     public static final Charset CHARSET = Charset.forName("UTF-8");
     public static final int BUFFER_SIZE = 1024;
@@ -17,9 +19,6 @@ public class Constants {
     // DATA TRANSFER
     public static final String C_REQUEST = "a";
     public static final String C_TERMINATE = "t";
-//    public static final String C_REFUSE = "n";
-//    public static final String C_ACCEPT = "y";
-    //    public static final String C_CONFIRM = "c";
 
     // SERVER
     public static final int CONV_MAX = 40;
@@ -48,7 +47,7 @@ public class Constants {
     public static final String SWITCH_TO_REGISTER = "Dont't have account? Register here";
     public static final String LOGIN_BUTTON = "Log In";
     public static final String REGISTER_BUTTON = "Register";
-    public static final int BLOCKING_SIZE = 16;
+    public static final int BLOCKING_SIZE = 8;
     public static final int LOGIN_MODE = 1;
     public static final int REGISTER_MODE = 2;
 

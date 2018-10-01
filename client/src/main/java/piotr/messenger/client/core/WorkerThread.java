@@ -5,6 +5,7 @@ import org.springframework.stereotype.Component;
 import piotr.messenger.client.gui.MainWindow;
 import piotr.messenger.client.gui.LoginWindow;
 import piotr.messenger.client.service.ConversationService;
+import piotr.messenger.client.util.ConvParameters;
 import piotr.messenger.client.util.TransferData;
 import piotr.messenger.library.Constants;
 
@@ -15,7 +16,7 @@ import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
 import java.util.List;
 import java.util.Collections;
-import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
 
 import org.slf4j.Logger;
@@ -34,7 +35,7 @@ public class WorkerThread implements Runnable {
     private ConversationService convService;
     private ByteBuffer buffer;
     private String userName;
-    private ArrayBlockingQueue<TransferData> mainDataQueue;
+    private BlockingQueue<TransferData> mainDataQueue;
     private volatile boolean isRunning;
 
 
@@ -68,9 +69,7 @@ public class WorkerThread implements Runnable {
             int port = Integer.parseInt(connectData.get(0));
             String startConvUser = connectData.get(2).equals(userName)?connectData.get(3):connectData.get(2);
 
-            if (convService.doConnect(connectData.get(1), port, startConvUser)) {
-                convService.createConvPage(startConvUser, mainWindow.getAppTabbs());
-            }
+            convService.createConversation(new ConvParameters(connectData.get(1), port, startConvUser), mainWindow.getAppTabbs());
         }
     }
 
@@ -149,8 +148,7 @@ public class WorkerThread implements Runnable {
                     if (input.getType().equals(Constants.C_TERMINATE)) {
                         //send termination information to writer
                         convService.getWriteQueues().get(input.getContent()).add("");
-                        //remove references to BlockingQueues and JTextAreas mapped to conversation
-                        convService.removeMapings(input.getContent());
+
                     } else if (input.getType().equals(Constants.C_REQUEST)) {
                         //send conversation request
                         buffer.clear();
@@ -158,12 +156,12 @@ public class WorkerThread implements Runnable {
                         //send buffer data
                         buffer.flip();
                         channel.write(buffer);
+
                     } else {
                         convService.getWriteQueues().get(input.getType()).add(input.getContent());
                     }
                 }
 
-                convService.readDataQueues(mainWindow.getAppTabbs());
                 buffer.clear();
                 TimeUnit.MILLISECONDS.sleep(32);
             }
@@ -179,7 +177,7 @@ public class WorkerThread implements Runnable {
     }
 
     private void prepareBufferForRequest(String receiver, String sender) {
-        buffer.putInt(1).put("a".getBytes(Constants.CHARSET));
+        buffer.putInt(1).put(Constants.C_REQUEST.getBytes(Constants.CHARSET));
         buffer.putInt(receiver.length()).put(receiver.getBytes(Constants.CHARSET));
         buffer.putInt(sender.length()).put(sender.getBytes(Constants.CHARSET));
     }
@@ -199,7 +197,7 @@ public class WorkerThread implements Runnable {
     }
 
     @Autowired
-    public void setMainDataQueue(ArrayBlockingQueue<TransferData> mainDataQueue) {
+    public void setMainDataQueue(BlockingQueue<TransferData> mainDataQueue) {
         this.mainDataQueue = mainDataQueue;
     }
 

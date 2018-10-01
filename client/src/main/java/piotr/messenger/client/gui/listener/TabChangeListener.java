@@ -1,8 +1,8 @@
 package piotr.messenger.client.gui.listener;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
+import piotr.messenger.client.gui.PrintWriteAreas;
 
 import javax.swing.*;
 import javax.swing.event.ChangeEvent;
@@ -15,16 +15,6 @@ public class TabChangeListener implements ChangeListener {
     private Map<String, JTextArea> writeAreas;
     private JTabbedPane appTabbs;
 
-    @Autowired
-    public void setWorker(@Qualifier("writeAreas") Map<String, JTextArea> writeAreas) {
-        this.writeAreas = writeAreas;
-    }
-
-    @Autowired
-    public void setAppTabbs(JTabbedPane appTabbs) {
-        this.appTabbs = appTabbs;
-    }
-
     @Override
     public void stateChanged(ChangeEvent e) {
 
@@ -34,6 +24,16 @@ public class TabChangeListener implements ChangeListener {
             writeAreas.get(tabName).requestFocus();
         }
 
+    }
+
+    @Autowired
+    public void setWriteAreas(PrintWriteAreas areas) {
+        this.writeAreas = areas.getWriteAreas();
+    }
+
+    @Autowired
+    public void setAppTabbs(JTabbedPane appTabbs) {
+        this.appTabbs = appTabbs;
     }
 
 }

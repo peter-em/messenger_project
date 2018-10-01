@@ -14,11 +14,6 @@ public class SendRequestButtonListener extends MainWindowActionListener {
 
     private JTextField chooseUser;
 
-    @Autowired
-    public void setChooseUser(@Qualifier("chooseUser") JTextField chooseUser) {
-        this.chooseUser = chooseUser;
-    }
-
     @Override
     public void actionPerformed(ActionEvent e) {
 
@@ -27,5 +22,10 @@ public class SendRequestButtonListener extends MainWindowActionListener {
         if (user.length() > 0) {
             mainDataQueue.add(new TransferData(Constants.C_REQUEST, user));
         }
+    }
+
+    @Autowired
+    public void setChooseUser(@Qualifier("chooseUser") JTextField chooseUser) {
+        this.chooseUser = chooseUser;
     }
 }

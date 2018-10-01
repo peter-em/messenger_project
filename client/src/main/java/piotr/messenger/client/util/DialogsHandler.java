@@ -1,6 +1,5 @@
 package piotr.messenger.client.util;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 
@@ -14,11 +13,10 @@ import javax.swing.JOptionPane;
  * handler.refused(username (of type String));
 * */
 
-@Component
+//@Component
 public class DialogsHandler {
 	private JPanel rootPanel;
 
-	@Autowired
     public DialogsHandler(@Qualifier("mainPanel") JPanel rootPanel) {
 		this.rootPanel = rootPanel;
 	}

@@ -19,21 +19,6 @@ public class AppWindowListener extends WindowAdapter {
     private JPanel mainPanel;
     private WorkerThread workerThread;
 
-    @Autowired
-    public void setMainPanel(@Qualifier("mainPanel") JPanel mainPanel) {
-        this.mainPanel = mainPanel;
-    }
-
-    @Autowired
-    public void setAppTabbsWindow(JTabbedPane appTabbs) {
-        this.appTabbs = appTabbs;
-    }
-
-    @Autowired
-    public void setWorkerThread(WorkerThread workerThread) {
-        this.workerThread = workerThread;
-    }
-
     //------------ METHODS LISTENING FOR APPLICATION WINDOW CHANGES - BEGIN ------------//
     //handle closing ('X' button or Alt+F4)
     @Override
@@ -54,4 +39,18 @@ public class AppWindowListener extends WindowAdapter {
     }
     //------------ METHODS LISTENING FOR APPLICATION WINDOW CHANGES - END ------------//
 
+    @Autowired
+    public void setMainPanel(@Qualifier("mainPanel") JPanel mainPanel) {
+        this.mainPanel = mainPanel;
+    }
+
+    @Autowired
+    public void setAppTabbsWindow(JTabbedPane appTabbs) {
+        this.appTabbs = appTabbs;
+    }
+
+    @Autowired
+    public void setWorkerThread(WorkerThread workerThread) {
+        this.workerThread = workerThread;
+    }
 }

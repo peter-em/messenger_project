@@ -4,15 +4,15 @@ import org.springframework.beans.factory.annotation.Autowired;
 import piotr.messenger.client.util.TransferData;
 
 import java.awt.event.ActionListener;
-import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
 
 // HANDLE CLICKABLE BUTTONS
 public abstract class MainWindowActionListener implements ActionListener{
 
-    ArrayBlockingQueue<TransferData> mainDataQueue;
+    BlockingQueue<TransferData> mainDataQueue;
 
     @Autowired
-    public void setMainDataQueue(ArrayBlockingQueue<TransferData> mainDataQueue) {
+    public void setMainDataQueue(BlockingQueue<TransferData> mainDataQueue) {
         this.mainDataQueue = mainDataQueue;
     }
 

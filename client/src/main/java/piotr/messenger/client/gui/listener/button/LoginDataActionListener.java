@@ -7,13 +7,7 @@ import java.awt.event.ActionListener;
 
 public abstract class LoginDataActionListener implements ActionListener {
 
-//    LoginData loginData;
     LoginWindow loginWindow;
-
-//    @Autowired
-//    public void setLoginData(LoginData loginData) {
-//        this.loginData = loginData;
-//    }
 
     @Autowired
     public void setLoginWindow(LoginWindow loginWindow) {

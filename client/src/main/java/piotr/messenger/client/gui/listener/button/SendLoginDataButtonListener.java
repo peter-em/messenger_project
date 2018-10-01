@@ -19,22 +19,6 @@ public class SendLoginDataButtonListener extends LoginDataActionListener {
     private JPasswordField passwordField;
     private JLabel invalidData;
 
-    @Autowired
-    public void setLoginField(@Qualifier("loginField") JTextField loginField) {
-        this.loginField = loginField;
-    }
-
-    @Autowired
-    public void setPasswordField(JPasswordField passwordField) {
-        this.passwordField = passwordField;
-    }
-
-    @Autowired
-    public void setInvalidData(@Qualifier("dataErrorLabel") JLabel invalidData) {
-        this.invalidData = invalidData;
-    }
-
-
     @Override
     public void actionPerformed(ActionEvent e) {
 
@@ -56,5 +40,20 @@ public class SendLoginDataButtonListener extends LoginDataActionListener {
             loginWindow.setLoginData(loginData);
             invalidData.setVisible(false);
         }
+    }
+
+    @Autowired
+    public void setLoginField(@Qualifier("loginField") JTextField loginField) {
+        this.loginField = loginField;
+    }
+
+    @Autowired
+    public void setPasswordField(JPasswordField passwordField) {
+        this.passwordField = passwordField;
+    }
+
+    @Autowired
+    public void setInvalidData(@Qualifier("dataErrorLabel") JLabel invalidData) {
+        this.invalidData = invalidData;
     }
 }

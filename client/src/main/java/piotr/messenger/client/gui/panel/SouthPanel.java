@@ -26,22 +26,6 @@ public class SouthPanel implements Panel {
     private JLabel ownerName;
 
     @Override
-    @Autowired
-    public void setLayoutManager(@Qualifier("gridBagLayout") LayoutManager layout) {
-        this.layout = layout;
-    }
-
-    @Autowired
-    public void setUsersCount(@Qualifier("usersCount") JLabel usersCount) {
-        this.usersCount = usersCount;
-    }
-
-    @Autowired
-    public void setOwnerName(@Qualifier("ownerName") JLabel ownerName) {
-        this.ownerName = ownerName;
-    }
-
-    @Override
     public JPanel init() {
         JPanel panel = new JPanel(layout);
         panel.setBorder(BorderFactory.createLineBorder(new Color(0, 74, 12)));
@@ -68,5 +52,21 @@ public class SouthPanel implements Panel {
         panel.add(usersCount, c);
 
         return panel;
+    }
+
+    @Override
+    @Autowired
+    public void setLayoutManager(@Qualifier("gridBagLayout") LayoutManager layout) {
+        this.layout = layout;
+    }
+
+    @Autowired
+    public void setUsersCount(@Qualifier("usersCount") JLabel usersCount) {
+        this.usersCount = usersCount;
+    }
+
+    @Autowired
+    public void setOwnerName(@Qualifier("ownerName") JLabel ownerName) {
+        this.ownerName = ownerName;
     }
 }

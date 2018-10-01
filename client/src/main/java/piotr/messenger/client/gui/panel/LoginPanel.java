@@ -23,57 +23,6 @@ public class LoginPanel implements Panel {
     private JTextPane loginInfo;
 
     @Override
-    @Autowired
-    public void setLayoutManager(@Qualifier("gridBagLayout") LayoutManager layout) {
-        this.layout = layout;
-    }
-
-    @Autowired
-    public void setLogin(@Qualifier("loginLabel") JLabel login) {
-        this.loginLabel = login;
-    }
-
-    @Autowired
-    public void setPasswd(@Qualifier("passwdLabel") JLabel passwd) {
-        this.passwdLabel = passwd;
-    }
-
-    @Autowired
-    public void setDataError(@Qualifier("dataErrorLabel") JLabel dataError) {
-        this.dataErrorLabel = dataError;
-    }
-
-    @Autowired
-    public void setSwitchMode(@Qualifier("switchLabel") JLabel switchMode) {
-        this.switchModeLabel = switchMode;
-    }
-
-    @Autowired
-    public void setLoginField(@Qualifier("loginField") JTextField loginField) {
-        this.loginField = loginField;
-    }
-
-    @Autowired
-    public void setPasswdField(@Qualifier("passwdField") JPasswordField passwdField) {
-        this.passwdField = passwdField;
-    }
-
-    @Autowired
-    public void setLogInButton(@Qualifier("logInButton") JButton logInButton) {
-        this.logInButton = logInButton;
-    }
-
-    @Autowired
-    public void setCancelButton(@Qualifier("cancelButton") JButton cancelButton) {
-        this.cancelButton = cancelButton;
-    }
-
-    @Autowired
-    public void setLoginInfo(JTextPane loginInfo) {
-        this.loginInfo = loginInfo;
-    }
-
-    @Override
     public JPanel init() {
         JPanel panel = new JPanel(layout);
 
@@ -140,5 +89,56 @@ public class LoginPanel implements Panel {
         panel.add(switchModeLabel, c);
 
         return panel;
+    }
+
+    @Override
+    @Autowired
+    public void setLayoutManager(@Qualifier("gridBagLayout") LayoutManager layout) {
+        this.layout = layout;
+    }
+
+    @Autowired
+    public void setLogin(@Qualifier("loginLabel") JLabel login) {
+        this.loginLabel = login;
+    }
+
+    @Autowired
+    public void setPasswd(@Qualifier("passwdLabel") JLabel passwd) {
+        this.passwdLabel = passwd;
+    }
+
+    @Autowired
+    public void setDataError(@Qualifier("dataErrorLabel") JLabel dataError) {
+        this.dataErrorLabel = dataError;
+    }
+
+    @Autowired
+    public void setSwitchMode(@Qualifier("switchLabel") JLabel switchMode) {
+        this.switchModeLabel = switchMode;
+    }
+
+    @Autowired
+    public void setLoginField(@Qualifier("loginField") JTextField loginField) {
+        this.loginField = loginField;
+    }
+
+    @Autowired
+    public void setPasswdField(@Qualifier("passwdField") JPasswordField passwdField) {
+        this.passwdField = passwdField;
+    }
+
+    @Autowired
+    public void setLogInButton(@Qualifier("logInButton") JButton logInButton) {
+        this.logInButton = logInButton;
+    }
+
+    @Autowired
+    public void setCancelButton(@Qualifier("cancelButton") JButton cancelButton) {
+        this.cancelButton = cancelButton;
+    }
+
+    @Autowired
+    public void setLoginInfo(JTextPane loginInfo) {
+        this.loginInfo = loginInfo;
     }
 }

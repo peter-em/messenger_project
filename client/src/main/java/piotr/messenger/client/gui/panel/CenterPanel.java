@@ -23,27 +23,6 @@ public class CenterPanel implements Panel {
     private JButton sendRequest;
 
     @Override
-    @Autowired
-    public void setLayoutManager(@Qualifier("gridBagLayout") LayoutManager layout) {
-        this.layout = layout;
-    }
-
-    @Autowired
-    public void setScrollPane(JScrollPane scrollPane) {
-        this.scrollPane = scrollPane;
-    }
-
-    @Autowired
-    public void setChooseUser(@Qualifier("chooseUser") JTextField chooseUser) {
-        this.chooseUser = chooseUser;
-    }
-
-    @Autowired
-    public void setSendRequest(@Qualifier("sendRequestButton") JButton sendRequest) {
-        this.sendRequest = sendRequest;
-    }
-
-    @Override
     public JPanel init() {
         JPanel panel = new JPanel(layout);
         panel.setMaximumSize(new Dimension(360, 650));
@@ -66,7 +45,7 @@ public class CenterPanel implements Panel {
         c.weightx = 1.0;
         c.gridy = 1;
         c.anchor = GridBagConstraints.LAST_LINE_START;
-        
+
         panel.add(chooseUser, c);
 
         c.insets = new Insets(0, 1, 0, 0);
@@ -76,5 +55,26 @@ public class CenterPanel implements Panel {
         panel.add(sendRequest, c);
 
         return panel;
+    }
+
+    @Override
+    @Autowired
+    public void setLayoutManager(@Qualifier("gridBagLayout") LayoutManager layout) {
+        this.layout = layout;
+    }
+
+    @Autowired
+    public void setScrollPane(JScrollPane scrollPane) {
+        this.scrollPane = scrollPane;
+    }
+
+    @Autowired
+    public void setChooseUser(@Qualifier("chooseUser") JTextField chooseUser) {
+        this.chooseUser = chooseUser;
+    }
+
+    @Autowired
+    public void setSendRequest(@Qualifier("sendRequestButton") JButton sendRequest) {
+        this.sendRequest = sendRequest;
     }
 }

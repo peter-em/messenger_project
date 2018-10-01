@@ -13,11 +13,6 @@ public class CloseTabButtonListener extends MainWindowActionListener {
 
     private JTabbedPane appTabbs;
 
-    @Autowired
-    public void setAppTabbs(JTabbedPane appTabbs) {
-        this.appTabbs = appTabbs;
-    }
-
     @Override
     public void actionPerformed(ActionEvent e) {
 
@@ -29,5 +24,10 @@ public class CloseTabButtonListener extends MainWindowActionListener {
             appTabbs.removeTabAt(idx);
 
         }
+    }
+
+    @Autowired
+    public void setAppTabbs(JTabbedPane appTabbs) {
+        this.appTabbs = appTabbs;
     }
 }

@@ -17,22 +17,6 @@ public class SwitchLabelMouseListener extends MouseAdapter {
     private JButton loginDataButton;
     private JLabel dataErrorLabel;
 
-
-    @Autowired
-    public void setSwitchLabel(@Qualifier("rawSwitchLabel") JLabel switchLabel) {
-        this.switchLabel = switchLabel;
-    }
-
-    @Autowired
-    public void setLoginDataButton(@Qualifier("logInButton") JButton loginDataButton) {
-        this.loginDataButton = loginDataButton;
-    }
-
-    @Autowired
-    public void setInvalidDataLabel(@Qualifier("dataErrorLabel") JLabel invalidDataLabel) {
-        this.dataErrorLabel = invalidDataLabel;
-    }
-
     @Override
     public void mouseClicked(MouseEvent e) {
 
@@ -55,5 +39,20 @@ public class SwitchLabelMouseListener extends MouseAdapter {
     @Override
     public void mouseExited(MouseEvent e) {
         switchLabel.setForeground(Constants.BLACK);
+    }
+
+    @Autowired
+    public void setSwitchLabel(@Qualifier("rawSwitchLabel") JLabel switchLabel) {
+        this.switchLabel = switchLabel;
+    }
+
+    @Autowired
+    public void setLoginDataButton(@Qualifier("logInButton") JButton loginDataButton) {
+        this.loginDataButton = loginDataButton;
+    }
+
+    @Autowired
+    public void setInvalidDataLabel(@Qualifier("dataErrorLabel") JLabel invalidDataLabel) {
+        this.dataErrorLabel = invalidDataLabel;
     }
 }

@@ -3,6 +3,7 @@ package piotr.messenger.client.config;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.*;
+import piotr.messenger.client.gui.PrintWriteAreas;
 import piotr.messenger.client.gui.listener.button.SendRequestButtonListener;
 import piotr.messenger.client.gui.panel.CenterPanel;
 import piotr.messenger.client.gui.panel.MainPanel;
@@ -16,9 +17,8 @@ import javax.swing.event.ChangeEvent;
 import javax.swing.event.ListSelectionEvent;
 import java.awt.*;
 import java.awt.event.WindowListener;
-import java.util.Map;
-import java.util.HashMap;
 import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
 
 @Configuration
 @Slf4j
@@ -82,7 +82,7 @@ public class MainWindowBeans {
 
     @Bean
     public JTabbedPane getTabbedPane(@Qualifier("centerPanel") JPanel centerPanel,
-                                     @Qualifier("writeAreas") Map<String, JTextArea> writeAreas) {
+                                     PrintWriteAreas areas) {
         JTabbedPane pane = new JTabbedPane();
         pane.setTabLayoutPolicy(JTabbedPane.WRAP_TAB_LAYOUT);
         pane.add("Clients", centerPanel);
@@ -93,7 +93,7 @@ public class MainWindowBeans {
                 int idx = pane.getSelectedIndex();
                 if (idx > 0) {
                     String tabName = pane.getTitleAt(idx);
-                    writeAreas.get(tabName).requestFocus();
+                    areas.getWriteAreas().get(tabName).requestFocus();
                 }
         });
         return pane;
@@ -209,20 +209,8 @@ public class MainWindowBeans {
     }
 
     @Bean
-    public ArrayBlockingQueue<TransferData> getQueue() {
+    public BlockingQueue<TransferData> getQueue() {
         return new ArrayBlockingQueue<>(Constants.BLOCKING_SIZE);
-    }
-
-    @Bean
-    @Qualifier("printAreas")
-    public Map<String, JTextArea> getPrintAreas() {
-        return new HashMap<>();
-    }
-
-    @Bean
-    @Qualifier("writeAreas")
-    public Map<String, JTextArea> getWriteAreas() {
-        return new HashMap<>();
     }
 
     @Bean
