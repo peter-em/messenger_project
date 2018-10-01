@@ -3,8 +3,10 @@ package piotr.messenger.client.gui;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
+import piotr.messenger.client.service.WindowMethods;
 import piotr.messenger.library.Constants;
 import piotr.messenger.library.util.ClientData;
+
 
 import javax.annotation.PostConstruct;
 import javax.swing.*;
@@ -23,7 +25,7 @@ public class LoginWindow {
 
     @PostConstruct
     public void initWindow() {
-        MainWindow.centerWindow(loginFrame);
+        WindowMethods.centerWindow(loginFrame);
     }
 
     public void dataInvalid(int response) {

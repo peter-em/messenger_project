@@ -20,7 +20,6 @@ import org.slf4j.LoggerFactory;
 @Component
 public class ServerWorker implements Runnable {
 
-	private ServerSocketChannel serverSocket;
 	private Selector selector;
 	private Logger logger;
 	private DataFlowService dataFlowService;
@@ -34,81 +33,62 @@ public class ServerWorker implements Runnable {
     @Override
 	public void run() {
 
-        openSocket();
+        try (ServerSocketChannel serverSocket = ServerSocketChannel.open()) {
+            openSocket(serverSocket);
 
-        while (!Thread.interrupted()) {
-			try {
+            while (!Thread.interrupted()) {
 
                 dataFlowService.cleanupClosedConversations();
                 dataFlowService.updateClients();
 
-				//iterating through set of keys which have available events
-				selector.select();
-				SelectionKey key;
+                //iterating through set of keys which have available events
+                selector.select();
+                SelectionKey key;
                 Iterator<SelectionKey> selectedKeys = selector.selectedKeys().iterator();
-				while (selectedKeys.hasNext()) {
+                while (selectedKeys.hasNext()) {
                     key = selectedKeys.next();
-					selectedKeys.remove();
+                    selectedKeys.remove();
 
-					//check for available event and handle it
-					if (!key.isValid()) {
+                    //check for available event and handle it
+                    if (!key.isValid()) {
                         logger.error("INVALID KEY");
                         key.cancel();
 
-					} else if (key.isAcceptable()) {
+                    } else if (key.isAcceptable()) {
                         dataFlowService.acceptClient(serverSocket);
 
-					} else if (key.isReadable()) {
+                    } else if (key.isReadable()) {
                         dataFlowService.readClientData((SocketChannel) key.channel());
 
-					} else if (key.isWritable()) {
+                    } else if (key.isWritable()) {
                         dataFlowService.writeClientData((SocketChannel) key.channel());
                         key.interestOps(SelectionKey.OP_READ);
-					}
-				}
-
-			} catch (IOException ioEx) {
-                logger.error("Problem occured while listening for events - "
-                        + ioEx.getMessage());
-			} catch (CancelledKeyException cancelled) {
-			    logger.error("Cancelled ({}).", cancelled.getMessage());
-                Thread.currentThread().interrupt();
-            } catch (InterruptedException abqEx) {
-                logger.error("ArrayBlockingQueue error ({})", abqEx.getMessage());
-                Thread.currentThread().interrupt();
+                    }
+                }
             }
-		}
+
+        } catch (IOException ioEx) {
+            logger.error("Problem occured while listening for events - "
+                    + ioEx.getMessage());
+        } catch (CancelledKeyException cancelled) {
+            logger.error("Cancelled ({}).", cancelled.getMessage());
+            Thread.currentThread().interrupt();
+        } catch (InterruptedException abqEx) {
+            logger.error("ArrayBlockingQueue error ({})", abqEx.getMessage());
+            Thread.currentThread().interrupt();
+        }
 
 		logger.info("Closing server");
         dataFlowService.terminateHandlers();
-		closeSocket();
 	}
 
-	private void openSocket() {
-		try {
-			serverSocket = ServerSocketChannel.open();
-			serverSocket.configureBlocking(false);
-            serverSocket.socket().bind(new InetSocketAddress(parameters.getHostAddress(), parameters.getHostPort()));
-			serverSocket.register(selector, SelectionKey.OP_ACCEPT);
-		} catch (IOException ioEx) {
-		    ioEx.printStackTrace(System.err);
-            logger.error("Co to kurla jest?! {}", ioEx.toString());
-            logger.error("Problem occured while opening listening port - ({}).", ioEx.getMessage());
-            Thread.currentThread().interrupt();
-            return;
-		}
+	private void openSocket(ServerSocketChannel serverSocket) throws IOException {
+        serverSocket.configureBlocking(false);
+        serverSocket.socket().bind(new InetSocketAddress(parameters.getHostAddress(), parameters.getHostPort()));
+        serverSocket.register(selector, SelectionKey.OP_ACCEPT);
+
         logger.info("Starting server, port in use: {}.", parameters.getHostPort());
 	}
-
-	private void closeSocket() {
-		try {
-			if (serverSocket.isOpen())
-				serverSocket.close();
-		} catch (IOException ioEx) {
-            logger.error("Problem occured while closing server socket - ({}).", ioEx.getMessage());
-		}
-	}
-
 
     @Autowired
     public void setSelector(Selector selector) {

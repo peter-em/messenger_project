@@ -1,7 +1,6 @@
 package piotr.messenger.server.database;
 
 import lombok.AllArgsConstructor;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import piotr.messenger.library.util.ClientData;
 

@@ -38,8 +38,8 @@ public class ConversationsExecutor {
             //create new handler and send usersDatabase connection data
             //if limit of conversations was not reached
             ConversationWorker worker = new ConversationWorker(parameters.getHostAddress(), parameters.getWorkerPort(), endDataQueue, pair);
-            --activeWorkersCounter;
             handlersExecutor.execute(worker);
+            ++activeWorkersCounter;
             return true;
         }
         return false;
