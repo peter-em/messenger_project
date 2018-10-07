@@ -3,8 +3,10 @@ package piotr.messenger.client.gui;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
-import piotr.messenger.client.util.LoginData;
+import piotr.messenger.client.service.WindowMethods;
 import piotr.messenger.library.Constants;
+import piotr.messenger.library.util.ClientData;
+
 
 import javax.annotation.PostConstruct;
 import javax.swing.*;
@@ -17,13 +19,13 @@ public class LoginWindow {
     private JPasswordField passwordField;
     private JLabel invalidLogin;
     private JButton sendButton;
-    private LoginData loginData;
+    private ClientData loginData;
     private volatile boolean dataReady = false;
 
 
     @PostConstruct
     public void initWindow() {
-        MainWindow.centerWindow(loginFrame);
+        WindowMethods.centerWindow(loginFrame);
     }
 
     public void dataInvalid(int response) {
@@ -44,11 +46,11 @@ public class LoginWindow {
         loginData = null;
     }
 
-    public LoginData getLoginData() {
+    public ClientData getClientData() {
         return loginData;
     }
 
-    public void setLoginData(LoginData loginData) {
+    public void setLoginData(ClientData loginData) {
         this.loginData = loginData;
         dataReady = true;
     }
@@ -66,9 +68,6 @@ public class LoginWindow {
         loginFrame.dispose();
     }
 
-    public void setDataReady(boolean dataReady) {
-        this.dataReady = dataReady;
-    }
 
     @Autowired
     public void setLoginFrame(JFrame loginFrame) {

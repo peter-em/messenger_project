@@ -1,12 +1,15 @@
 package piotr.messenger.client.config;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.*;
+import piotr.messenger.client.gui.PrintWriteAreas;
 import piotr.messenger.client.gui.listener.button.SendRequestButtonListener;
 import piotr.messenger.client.gui.panel.CenterPanel;
 import piotr.messenger.client.gui.panel.MainPanel;
 import piotr.messenger.client.gui.panel.SouthPanel;
 import piotr.messenger.client.gui.listener.button.CloseTabButtonListener;
+import piotr.messenger.client.util.TransferData;
 import piotr.messenger.library.Constants;
 
 import javax.swing.*;
@@ -14,12 +17,12 @@ import javax.swing.event.ChangeEvent;
 import javax.swing.event.ListSelectionEvent;
 import java.awt.*;
 import java.awt.event.WindowListener;
-import java.util.Map;
-import java.util.HashMap;
 import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
 
 @Configuration
-public class MainWindowConfig {
+@Slf4j
+public class MainWindowBeans {
 
     @Bean(name="mainFrame")
     public JFrame getFrame(@Qualifier("mainPanel") JPanel mainPanel,
@@ -35,7 +38,7 @@ public class MainWindowConfig {
         try {
             UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
         } catch(Exception ex) {
-            ex.printStackTrace();
+            log.error("MainWindowBeans: {}", ex.getMessage());
         }
         SwingUtilities.updateComponentTreeUI(mainPanel);
         appFrame.pack();
@@ -48,7 +51,6 @@ public class MainWindowConfig {
     @Qualifier("mainPanel")
     public JPanel getMainPanel(MainPanel mainPanel) {
         return mainPanel.init();
-//        return new MainPanel().init();
     }
 
 
@@ -80,7 +82,7 @@ public class MainWindowConfig {
 
     @Bean
     public JTabbedPane getTabbedPane(@Qualifier("centerPanel") JPanel centerPanel,
-                                     @Qualifier("writeAreas") Map<String, JTextArea> writeAreas) {
+                                     PrintWriteAreas areas) {
         JTabbedPane pane = new JTabbedPane();
         pane.setTabLayoutPolicy(JTabbedPane.WRAP_TAB_LAYOUT);
         pane.add("Clients", centerPanel);
@@ -91,7 +93,7 @@ public class MainWindowConfig {
                 int idx = pane.getSelectedIndex();
                 if (idx > 0) {
                     String tabName = pane.getTitleAt(idx);
-                    writeAreas.get(tabName).requestFocus();
+                    areas.getWriteAreas().get(tabName).requestFocus();
                 }
         });
         return pane;
@@ -189,7 +191,6 @@ public class MainWindowConfig {
     public JLabel getOwnerLable() {
         JLabel owner = new JLabel("Owner");
         owner.setHorizontalTextPosition(SwingConstants.LEADING);
-//        Font font = owner.getFont();
         owner.setFont(new Font(owner.getFont().getName(), Font.BOLD, 13));
 
         return owner;
@@ -208,20 +209,8 @@ public class MainWindowConfig {
     }
 
     @Bean
-    public ArrayBlockingQueue<String> getQueue() {
+    public BlockingQueue<TransferData> getQueue() {
         return new ArrayBlockingQueue<>(Constants.BLOCKING_SIZE);
-    }
-
-    @Bean
-    @Qualifier("printAreas")
-    public Map<String, JTextArea> getPrintAreas() {
-        return new HashMap<>();
-    }
-
-    @Bean
-    @Qualifier("writeAreas")
-    public Map<String, JTextArea> getWriteAreas() {
-        return new HashMap<>();
     }
 
     @Bean

@@ -13,11 +13,13 @@ public class ConnectionParameters {
     private final @Getter String hostAddress;
     private final @Getter int hostPort;
     private final @Getter List<Integer> executorPorts;
+    private int lastUsedPort;
 
     public ConnectionParameters() {
         hostAddress = Constants.HOST_ADDRESS;
         hostPort = Constants.PORT_NR;
         executorPorts = new LinkedList<>();
+        lastUsedPort = 0;
     }
 
     public int getWorkerPort() {
@@ -26,11 +28,12 @@ public class ConnectionParameters {
             ++availablePort;
         }
         executorPorts.add(availablePort);
-        return availablePort;
+        lastUsedPort = availablePort;
+        return lastUsedPort;
     }
 
     public int getLastUsedPort() {
-        return executorPorts.get(executorPorts.size() - 1);
+        return lastUsedPort;
     }
 
     public void deletePort(int port) {

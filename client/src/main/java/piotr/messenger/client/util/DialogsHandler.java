@@ -1,21 +1,22 @@
 package piotr.messenger.client.util;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 
 import javax.swing.JPanel;
 import javax.swing.JOptionPane;
 
-/*
-* class used to display pop-up information window
+/**
+ * class used to display pop-up information window
+ * Example of using this class:
+ * DialogsHandler handler = new DialogsHandler(parentPanel (of type JPanel));
+ * handler.refused(username (of type String));
 * */
 
-@Component
+//@Component
 public class DialogsHandler {
 	private JPanel rootPanel;
 
-	@Autowired
     public DialogsHandler(@Qualifier("mainPanel") JPanel rootPanel) {
 		this.rootPanel = rootPanel;
 	}

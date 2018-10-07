@@ -20,6 +20,16 @@ public class MainPanel implements Panel {
     private JTabbedPane tabbedPane;
 
     @Override
+    public JPanel init() {
+        JPanel panel = new JPanel(layout);
+        panel.add(toolBar, BorderLayout.PAGE_START);
+        panel.add(tabbedPane, BorderLayout.CENTER);
+        panel.add(southPanel, BorderLayout.PAGE_END);
+
+        return panel;
+    }
+
+    @Override
     @Autowired
     public void setLayoutManager(@Qualifier("borderLayout") LayoutManager layout) {
         this.layout = layout;
@@ -38,19 +48,5 @@ public class MainPanel implements Panel {
     @Autowired
     public void setTabbedPane(JTabbedPane tabbedPane) {
         this.tabbedPane = tabbedPane;
-    }
-
-
-    @Override
-//    @PostConstruct
-    public JPanel init() {
-        JPanel panel = new JPanel(layout);
-        panel.add(toolBar, BorderLayout.PAGE_START);
-        panel.add(tabbedPane, BorderLayout.CENTER);
-        panel.add(southPanel, BorderLayout.PAGE_END);
-
-
-
-        return panel;
     }
 }

@@ -14,16 +14,16 @@ public class LoginWindowListener extends WindowAdapter {
 
     private LoginWindow loginWindow;
 
-    @Autowired
-    public void setLoginWindow(LoginWindow loginWindow) {
-        this.loginWindow = loginWindow;
-    }
-
     //handle closing ('X' button or Alt+F4)
     @Override
     public void windowClosing(WindowEvent event) {
 
         loginWindow.setLoginData(null);
 
+    }
+
+    @Autowired
+    public void setLoginWindow(LoginWindow loginWindow) {
+        this.loginWindow = loginWindow;
     }
 }

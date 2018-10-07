@@ -9,7 +9,7 @@
     <parent>
         <artifactId>messenger</artifactId>
         <groupId>piotr.messenger</groupId>
-        <version>0.8.1</version>
+        <version>1.0.2</version>
     </parent>
 
     <dependencies>

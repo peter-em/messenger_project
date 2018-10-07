@@ -1,5 +1,6 @@
 package piotr.messenger.client.config;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -29,7 +30,8 @@ import java.awt.event.MouseListener;
 import java.awt.event.WindowListener;
 
 @Configuration
-public class LoginWindowConfig {
+@Slf4j
+public class LoginWindowBeans {
 
     @Bean(name="loginFrame")
     public JFrame getFrame(@Qualifier("loginPanel") JPanel loginPanel,
@@ -46,7 +48,7 @@ public class LoginWindowConfig {
         try {
             UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
         } catch(Exception ex) {
-            ex.printStackTrace();
+            log.error("LoginWindowBeans: {}", ex.getMessage());
         }
         SwingUtilities.updateComponentTreeUI(loginPanel);
 

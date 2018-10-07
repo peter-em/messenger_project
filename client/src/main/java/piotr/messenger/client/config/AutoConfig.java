@@ -9,7 +9,8 @@ import org.springframework.context.annotation.Import;
 @ComponentScan("piotr.messenger.client.gui.*")
 @ComponentScan("piotr.messenger.client.core")
 @ComponentScan("piotr.messenger.client.util")
-@Import({MainWindowConfig.class, LoginWindowConfig.class})
+@ComponentScan("piotr.messenger.client.service")
+@Import({MainWindowBeans.class, LoginWindowBeans.class})
 public class AutoConfig {
 }
 
