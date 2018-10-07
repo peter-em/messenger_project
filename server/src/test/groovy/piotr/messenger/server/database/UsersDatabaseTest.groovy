@@ -1,6 +1,9 @@
 package piotr.messenger.server.database
 
 import piotr.messenger.library.util.ClientData
+import piotr.messenger.server.database.model.UserJPA
+import piotr.messenger.server.database.service.UsersJPAService
+
 import spock.lang.Specification
 import spock.lang.Subject
 import spock.lang.Unroll
@@ -8,20 +11,20 @@ import spock.lang.Unroll
 
 class UsersDatabaseTest extends Specification {
 
-    UsersJDBCTemplate jdbc
+    UsersJPAService service
     @Subject UsersDatabase database
     def data = new ClientData(null,null,0)
 
     def setup() {
-        jdbc = Mock()
-        database = new UsersDatabase(jdbc)
+        service = Mock()
+        database = new UsersDatabase(service)
     }
 
     @Unroll
     def "Verification #Nr: should return #value for provided ClientData"() {
         given:"stubbed getUser method and ClientData object"
         data.setPassword(password)
-        jdbc.getUser(_) >> user
+        service.getUser(_) >> user
 
         expect:"verifyClient returns #value"
         database.verifyClient(data) == value
@@ -30,19 +33,18 @@ class UsersDatabaseTest extends Specification {
         Nr  | password  | user      || value
         1   | "passwd11"| goodUser()|| true
         2   | "other"   | goodUser()|| false
-        3   | "passwd11"| null      || false
     }
 
     @Unroll
     def "Should #not call registerUser when provided credentials are #not available"() {
         given:"stubbed hasUser method"
-        jdbc.hasUser(_) >> flag
+        service.hasUser(_) >> flag
 
         when:"registerClient method is called"
         database.registerClient(data)
 
         then:"registerUser method from jdbc should be called #n times"
-        n * jdbc.registerUser(_,_)
+        n * service.registerUser(_,_)
 
         where:
         not  | flag  || n
@@ -51,8 +53,8 @@ class UsersDatabaseTest extends Specification {
     }
 
     def goodUser() {
-        UserSQL sql = new UserSQL()
-        sql.setPassword("passwd11")
-        sql
+        UserJPA user = new UserJPA()
+        user.setPassword("passwd11")
+        user
     }
 }

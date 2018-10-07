@@ -1,4 +1,4 @@
-package piotr.messenger.server.config;
+package piotr.messenger.server.beans;
 
 import org.springframework.beans.factory.BeanCreationException;
 import org.springframework.context.annotation.Bean;

@@ -1,4 +1,4 @@
-package piotr.messenger.server.database;
+package piotr.messenger.server.database.service;
 
 
 public interface UsersDAO<T> {
@@ -23,4 +23,9 @@ public interface UsersDAO<T> {
      */
     boolean hasUser(String login);
 
+    /**
+     * This is the method to be used to update
+     * lastlogged field for provided user
+     */
+    void updateLastLogged(T user);
 }

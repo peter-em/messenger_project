@@ -24,7 +24,8 @@ public class Constants {
     public static final int CONV_MAX = 40;
     public static final String COL_LOGIN = "login";
     public static final String COL_PSSWRD = "password";
-    public static final String COL_REGISER = "registered";
+    public static final String COL_REGISTRD = "registeredAt";
+    public static final String COL_LOGGEDIN = "loggedinAt";
 
     // CLIENT
     public static final String APP_NAME = "Chat-o-Matt";
