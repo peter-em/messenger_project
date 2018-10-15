@@ -4,7 +4,7 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
-import piotr.messenger.server.core.ServerWorker;
+import piotr.messenger.server.core.AuthorizationWorker;
 
 import javax.annotation.Resource;
 
@@ -13,7 +13,7 @@ import javax.annotation.Resource;
 public class ServerMain implements CommandLineRunner {
 
     @Resource
-    private ServerWorker server;
+    private AuthorizationWorker server;
 
 	public static void main(String[] args) {
 

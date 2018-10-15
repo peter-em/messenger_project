@@ -3,7 +3,7 @@ package piotr.messenger.client.gui.listener;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
-import piotr.messenger.client.core.WorkerThread;
+import piotr.messenger.client.core.MainThread;
 
 import javax.swing.JPanel;
 import javax.swing.JTabbedPane;
@@ -17,7 +17,7 @@ public class AppWindowListener extends WindowAdapter {
 
     private JTabbedPane appTabbs;
     private JPanel mainPanel;
-    private WorkerThread workerThread;
+    private MainThread mainThread;
 
     //------------ METHODS LISTENING FOR APPLICATION WINDOW CHANGES - BEGIN ------------//
     //handle closing ('X' button or Alt+F4)
@@ -35,7 +35,7 @@ public class AppWindowListener extends WindowAdapter {
                 return;
 
         }
-        workerThread.stopWorker();
+        mainThread.stopWorker();
     }
     //------------ METHODS LISTENING FOR APPLICATION WINDOW CHANGES - END ------------//
 
@@ -50,7 +50,7 @@ public class AppWindowListener extends WindowAdapter {
     }
 
     @Autowired
-    public void setWorkerThread(WorkerThread workerThread) {
-        this.workerThread = workerThread;
+    public void setMainThread(MainThread mainThread) {
+        this.mainThread = mainThread;
     }
 }

@@ -209,7 +209,14 @@ public class MainWindowBeans {
     }
 
     @Bean
-    public BlockingQueue<TransferData> getQueue() {
+    @Qualifier("mainQueue")
+    public BlockingQueue<TransferData> getMainQueue() {
+        return new ArrayBlockingQueue<>(Constants.BLOCKING_SIZE);
+    }
+
+    @Bean
+    @Qualifier("messageQueue")
+    public BlockingQueue<TransferData> getMessageQueue() {
         return new ArrayBlockingQueue<>(Constants.BLOCKING_SIZE);
     }
 

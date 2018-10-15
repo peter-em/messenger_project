@@ -6,11 +6,11 @@ public class ConvParameters {
 
     private final @Getter String hostAddress;
     private final @Getter int hostPort;
-    private final @Getter String remoteUser;
+    private final @Getter String userName;
 
     public ConvParameters(String serverAddress, int serverPort, String remoteUser) {
         this.hostAddress = serverAddress;
         this.hostPort = serverPort;
-        this.remoteUser = remoteUser;
+        this.userName = remoteUser;
     }
 }

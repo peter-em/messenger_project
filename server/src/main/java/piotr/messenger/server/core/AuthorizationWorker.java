@@ -1,9 +1,10 @@
 package piotr.messenger.server.core;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
-import piotr.messenger.server.service.ConnectionParameters;
-import piotr.messenger.server.service.DataFlowService;
+import piotr.messenger.server.util.ConnectionParameters;
+import piotr.messenger.server.service.AuthorizationService;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -18,15 +19,16 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 @Component
-public class ServerWorker implements Runnable {
+public class AuthorizationWorker implements Runnable {
 
 	private Selector selector;
 	private Logger logger;
-	private DataFlowService dataFlowService;
+	private AuthorizationService authorizationService;
 	private ConnectionParameters parameters;
+	private ConversationsWorker worker;
 
-    public ServerWorker() {
-        logger = LoggerFactory.getLogger(ServerWorker.class);
+    public AuthorizationWorker() {
+        logger = LoggerFactory.getLogger(AuthorizationWorker.class);
         System.setProperty("sun.net.useExclusiveBind", "false");
     }
 
@@ -35,11 +37,20 @@ public class ServerWorker implements Runnable {
 
         try (ServerSocketChannel serverSocket = ServerSocketChannel.open()) {
             openSocket(serverSocket);
+            Thread task = new Thread(worker);
+            task.start();
+
+            int counter = 0;
+            while (!worker.isRunning() || counter++ < 20) {
+                Thread.sleep(100);
+            }
+            if (counter == 20) {
+                Thread.currentThread().interrupt();
+            }
 
             while (!Thread.interrupted()) {
 
-                dataFlowService.cleanupClosedConversations();
-                dataFlowService.updateClients();
+                authorizationService.updateClients();
 
                 //iterating through set of keys which have available events
                 selector.select();
@@ -55,13 +66,13 @@ public class ServerWorker implements Runnable {
                         key.cancel();
 
                     } else if (key.isAcceptable()) {
-                        dataFlowService.acceptClient(serverSocket);
+                        authorizationService.acceptClient(serverSocket);
 
                     } else if (key.isReadable()) {
-                        dataFlowService.readClientData((SocketChannel) key.channel());
+                        authorizationService.readClientData((SocketChannel) key.channel());
 
                     } else if (key.isWritable()) {
-                        dataFlowService.writeClientData((SocketChannel) key.channel());
+                        authorizationService.writeClientData((SocketChannel) key.channel());
                         key.interestOps(SelectionKey.OP_READ);
                     }
                 }
@@ -78,8 +89,8 @@ public class ServerWorker implements Runnable {
             Thread.currentThread().interrupt();
         }
 
+        worker.stopWorker();
 		logger.info("Closing server");
-        dataFlowService.terminateHandlers();
 	}
 
 	private void openSocket(ServerSocketChannel serverSocket) throws IOException {
@@ -91,18 +102,23 @@ public class ServerWorker implements Runnable {
 	}
 
     @Autowired
-    public void setSelector(Selector selector) {
+    public void setSelector(@Qualifier("mainSelector") Selector selector) {
         this.selector = selector;
     }
 
     @Autowired
-    public void setDataFlowService(DataFlowService dataFlowService) {
-        this.dataFlowService = dataFlowService;
+    public void setAuthorizationService(AuthorizationService authorizationService) {
+        this.authorizationService = authorizationService;
     }
 
     @Autowired
     public void setParameters(ConnectionParameters parameters) {
         this.parameters = parameters;
+    }
+
+    @Autowired
+    public void setWorker(ConversationsWorker worker) {
+        this.worker = worker;
     }
 }
 

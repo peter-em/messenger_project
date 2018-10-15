@@ -1,5 +1,6 @@
-package piotr.messenger.server.service
+package piotr.messenger.server.util
 
+import piotr.messenger.server.util.ConnectionParameters
 import spock.lang.Specification
 
 class ConnectionParametersTest extends Specification {

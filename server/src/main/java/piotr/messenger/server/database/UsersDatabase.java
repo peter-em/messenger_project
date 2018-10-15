@@ -16,7 +16,7 @@ public class UsersDatabase {
     public boolean verifyClient(ClientData data) {
 
         UserJPA user = jpaService.getUser(data.getLogin());
-        if (user.getPassword().equals(data.getPassword())) {
+        if (data.getPassword().equals(user.getPassword())) {
             jpaService.updateLastLogged(user);
             return true;
         }

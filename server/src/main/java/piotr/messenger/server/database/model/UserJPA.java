@@ -18,7 +18,7 @@ public class UserJPA implements Serializable {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private int id;
+    private Integer id;
 
     @Column(length = Constants.RECORD_LENGTH, nullable = false, unique = true)
     private String login;

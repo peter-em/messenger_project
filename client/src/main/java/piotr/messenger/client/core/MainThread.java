@@ -1,6 +1,7 @@
 package piotr.messenger.client.core;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 import piotr.messenger.client.gui.MainWindow;
 import piotr.messenger.client.gui.LoginWindow;
@@ -24,16 +25,20 @@ import org.slf4j.LoggerFactory;
 import piotr.messenger.library.service.ClientDataConverter;
 import piotr.messenger.library.util.ClientData;
 
+/**
+ * worker thread - manages application data
+ * connects to server, sends user credentials (login and password)
+ * receives clients list from server and presents it to user
+ */
 
-//worker thread - manages application data
 @Component
-public class WorkerThread implements Runnable {
+public class MainThread implements Runnable {
 
-    private final Logger logger = LoggerFactory.getLogger(WorkerThread.class);
+    private final Logger logger = LoggerFactory.getLogger(MainThread.class);
     private MainWindow mainWindow;
     private LoginWindow loginWindow;
     private ConversationService convService;
-    private ByteBuffer buffer;
+    private ConversationsThread conversationsThread;
     private String userName;
     private BlockingQueue<TransferData> mainDataQueue;
     private volatile boolean isRunning;
@@ -45,11 +50,12 @@ public class WorkerThread implements Runnable {
         channel.connect(new InetSocketAddress(Constants.HOST_ADDRESS, Constants.PORT_NR));
     }
 
-    private void handleResponse(int response) {
+    private void handleResponse(ByteBuffer buffer) {
 
+        int response = buffer.getInt();
         if (response > 0) {
 
-            List<String> clients = ClientDataConverter.decodeListFromServer(response, buffer);
+            List<String> clients = ClientDataConverter.decodeBufferToList(response, buffer);
             Collections.sort(clients);
             clients.remove(userName);
 
@@ -60,21 +66,12 @@ public class WorkerThread implements Runnable {
             }
             mainWindow.getUsersCount().setText(("Active users: " + listModel.size()));
 
-        } else if (response == -40) {
-
-            //  another user requested conv, server sends connectData
-            //  connectData contains - [0]: port number, [1]: server address,
-            //  [2] and [3]: logins of users involved in conversation
-            List<String> connectData = ClientDataConverter.decodeListFromServer(4, buffer);
-            int port = Integer.parseInt(connectData.get(0));
-            String startConvUser = connectData.get(2).equals(userName)?connectData.get(3):connectData.get(2);
-
-            convService.createConversation(new ConvParameters(connectData.get(1), port, startConvUser), mainWindow.getAppTabbs());
         }
     }
 
-    private boolean performVerification(SocketChannel channel) throws IOException, InterruptedException {
+    private int performVerification(SocketChannel channel) throws IOException, InterruptedException {
         int response = -1;
+        ByteBuffer tmpBuffer = ByteBuffer.allocate(0);
         while (response != 0) {
 
             Thread.sleep(128);
@@ -86,11 +83,11 @@ public class WorkerThread implements Runnable {
             if (clientData == null) {
                 loginWindow.disposeWindow();
                 mainWindow.getMainFrame().dispose();
-                return false;
+                return 0;
             }
             userName = clientData.getLogin();
 
-            ByteBuffer tmpBuffer = ClientDataConverter.encodeToBuffer(
+            tmpBuffer = ClientDataConverter.encodeToBuffer(
                     new ClientData(userName, clientData.getPassword(), clientData.getConnectMode()));
 
             tmpBuffer.flip();
@@ -107,7 +104,7 @@ public class WorkerThread implements Runnable {
         }
         channel.configureBlocking(false);
         loginWindow.disposeWindow();
-        return true;
+        return tmpBuffer.getInt();
     }
 
     @Override
@@ -120,24 +117,38 @@ public class WorkerThread implements Runnable {
 
             loginWindow.showWindow();
 
-            if (!performVerification(channel))
+            int convPort = performVerification(channel);
+            if (convPort == 0)
                 return;
+            Thread.currentThread().setName("Client_" + userName);
+
+            // start ConvThrd, set connection parameters
+            conversationsThread.setParameters(new ConvParameters(Constants.HOST_ADDRESS, convPort, userName));
+            Thread convWorker = new Thread(conversationsThread);
+            convWorker.start();
+
+            int counter = 0;
+            while (!conversationsThread.isRunning() || counter++ < 10) {
+                Thread.sleep(50);
+            }
+            if (counter == 10) {
+                logger.error("Server could not start due to connection problems");
+                return;
+            }
 
             //reveal window app if verification was succesful
             mainWindow.getOwnerName().setText(userName);
             mainWindow.getMainFrame().setVisible(true);
             isRunning = true;
-            Thread.currentThread().setName("Client_" + userName);
 
-            buffer = ByteBuffer.allocate(Constants.BUFFER_SIZE);
-            int bytesRead;
+            ByteBuffer buffer = ByteBuffer.allocate(Constants.BUFFER_SIZE);
             while (isRunning) {
 
                 buffer.clear();
-                bytesRead = channel.read(buffer);
+                int bytesRead = channel.read(buffer);
                 if (bytesRead != 0) {
                     buffer.flip();
-                    handleResponse(buffer.getInt());
+                    handleResponse(buffer);
                 }
 
                 if (!mainDataQueue.isEmpty()) {
@@ -146,24 +157,14 @@ public class WorkerThread implements Runnable {
 
                     //input data - type: type of message, content: receiver/message
                     if (input.getType().equals(Constants.C_TERMINATE)) {
-                        //send termination information to writer
-                        convService.getWriteQueues().get(input.getContent()).add("");
+                        convService.removeConvPage(input.getContent());
 
                     } else if (input.getType().equals(Constants.C_REQUEST)) {
-                        //send conversation request
-                        buffer.clear();
-                        prepareBufferForRequest(input.getContent(), userName);
-                        //send buffer data
-                        buffer.flip();
-                        channel.write(buffer);
+                        convService.createConvPage(input.getContent());
 
-                    } else {
-                        convService.getWriteQueues().get(input.getType()).add(input.getContent());
                     }
                 }
-
-                buffer.clear();
-                TimeUnit.MILLISECONDS.sleep(32);
+                TimeUnit.MILLISECONDS.sleep(200);
             }
 
         } catch (IOException ioEx) {
@@ -172,14 +173,8 @@ public class WorkerThread implements Runnable {
             Thread.currentThread().interrupt();
             logger.error("Main thread interrupted ({}).", intrEx.getMessage());
         }
-        convService.stopConvThreads();
+        conversationsThread.stopConv();
         mainWindow.disposeWindow();
-    }
-
-    private void prepareBufferForRequest(String receiver, String sender) {
-        buffer.putInt(1).put(Constants.C_REQUEST.getBytes(Constants.CHARSET));
-        buffer.putInt(receiver.length()).put(receiver.getBytes(Constants.CHARSET));
-        buffer.putInt(sender.length()).put(sender.getBytes(Constants.CHARSET));
     }
 
     public void stopWorker() {
@@ -197,12 +192,17 @@ public class WorkerThread implements Runnable {
     }
 
     @Autowired
-    public void setMainDataQueue(BlockingQueue<TransferData> mainDataQueue) {
+    public void setMainDataQueue(@Qualifier("mainQueue") BlockingQueue<TransferData> mainDataQueue) {
         this.mainDataQueue = mainDataQueue;
     }
 
     @Autowired
     public void setConvService(ConversationService convService) {
         this.convService = convService;
+    }
+
+    @Autowired
+    public void setConversationsThread(ConversationsThread conversationsThread) {
+        this.conversationsThread = conversationsThread;
     }
 }

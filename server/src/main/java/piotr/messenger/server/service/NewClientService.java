@@ -15,8 +15,8 @@ import java.nio.channels.SocketChannel;
 @AllArgsConstructor
 public class NewClientService {
 
-    private UsersDatabase usersDatabase;
-    private ClientsConnectionService connectionService;
+    private final UsersDatabase usersDatabase;
+    private final ClientsConnectionService connectionService;
 
 
     public int handleData(ByteBuffer readBuffer, SocketChannel clientRead) {

@@ -29,6 +29,7 @@ class ClientsConnectionServiceTest extends Specification {
         2   | SocketChannel.open()|| false
         3   | clientStr           || true
         4   | "otheruser"         || false
+        5   | null                || false
     }
 
     def "Should container size increase after addUser method call"() {

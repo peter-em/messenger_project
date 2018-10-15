@@ -22,7 +22,7 @@ public class ConvKeyListener extends KeyAdapter {
 
     private Map<String, JTextArea> writeAreas;
     private Map<String, JTextArea> printAreas;
-    private BlockingQueue<TransferData> mainDataQueue;
+    private BlockingQueue<TransferData> messageQueue;
     private JTabbedPane appTabbs;
 
     // ---------- HANDLE KEY PRESSES ----------- //
@@ -43,7 +43,7 @@ public class ConvKeyListener extends KeyAdapter {
                 String text = tmpWrite.getText().trim();
                 if (text.length() != 0) {
 
-                    mainDataQueue.add(new TransferData(tabName, text));
+                    messageQueue.add(new TransferData(tabName, text));
                     WindowMethods.printMessage("me", text, printAreas.get(tabName));
                     tmpWrite.setText("");
                 }
@@ -62,8 +62,8 @@ public class ConvKeyListener extends KeyAdapter {
     }
 
     @Autowired
-    public void setMainDataQueue(BlockingQueue<TransferData> mainDataQueue) {
-        this.mainDataQueue = mainDataQueue;
+    public void setMessageQueue(@Qualifier("messageQueue") BlockingQueue<TransferData> messageQueue) {
+        this.messageQueue = messageQueue;
     }
 
     @Autowired

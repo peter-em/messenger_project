@@ -3,38 +3,40 @@ package piotr.messenger.server.service;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 import piotr.messenger.library.Constants;
+import piotr.messenger.server.util.ConnectionParameters;
 
-import javax.annotation.PostConstruct;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
+import java.util.Arrays;
 
 @Component
-public class DataFlowService {
+public class AuthorizationService {
 
-    private ClientsConnectionService connectionService;
-    private NewClientService newClientService;
-    private ConversationService conversationService;
-    private ConversationsExecutor executor;
-    private Selector selector;
-    private Logger logger;
+    private final ClientsConnectionService connectionService;
+    private final NewClientService newClientService;
+    private final ConnectionParameters parameters;
+    private final Selector selector;
+    private final Logger logger;
     private boolean updateClietsUserList;
 
-    public DataFlowService(Selector selector) {
+    public AuthorizationService(@Qualifier("mainSelector") Selector selector,
+                                NewClientService newClientService,
+                                ClientsConnectionService connectionService,
+                                ConnectionParameters parameters) {
         this.selector = selector;
+        this.newClientService = newClientService;
+        this.connectionService = connectionService;
+        this.parameters = parameters;
+        logger = LoggerFactory.getLogger(AuthorizationService.class);
     }
 
-    @PostConstruct
-    private void initServices() {
-        conversationService.setDataFlowService(this);
-        logger = LoggerFactory.getLogger(DataFlowService.class);
-    }
 
     public void acceptClient(ServerSocketChannel serverSocket) throws IOException {
 
@@ -68,9 +70,9 @@ public class DataFlowService {
         }
 
         readBuffer.flip();
-        if (connectionService.isAuthenticated(clientSocket)) {
-            conversationService.handleData(readBuffer, clientSocket);
-        } else {
+        if (!connectionService.isAuthenticated(clientSocket)) {
+
+
             // send client a response to veryfication/registration request
             // success (0) or failure (-1 when verification failed, -2 if such client has already logged in)
             int response = newClientService.handleData(readBuffer, clientSocket);
@@ -83,8 +85,12 @@ public class DataFlowService {
             }
             readBuffer.clear();
             readBuffer.putInt(response);
+            if (response == 0) {
+                readBuffer.putInt(parameters.getLastUsedPort());
+            }
+
             readBuffer.flip();
-            send(clientSocket, readBuffer.array());
+            send(clientSocket, Arrays.copyOf(readBuffer.array(), readBuffer.limit()));
         }
     }
 
@@ -95,21 +101,13 @@ public class DataFlowService {
         }
     }
 
-    public void send(SocketChannel client, byte[] data) {
+    private void send(SocketChannel client, byte[] data) {
 
         connectionService.addBufferToClient(client, ByteBuffer.wrap(data));
         SelectionKey selectionKey = client.keyFor(selector);
         selectionKey.interestOps(SelectionKey.OP_WRITE);
     }
 
-    public void cleanupClosedConversations() throws InterruptedException {
-        //clear leftovers from terminated conversation handler
-        executor.cleanAfterWorker();
-    }
-
-    public void terminateHandlers() {
-        executor.terminateExecutor();
-    }
 
     private void toggleUpdateClients() {
         updateClietsUserList = true;
@@ -130,24 +128,4 @@ public class DataFlowService {
         updateClietsUserList = false;
     }
 
-
-    @Autowired
-    public void setExecutor(ConversationsExecutor executor) {
-        this.executor = executor;
-    }
-
-    @Autowired
-    public void setConversationService(ConversationService conversationService) {
-        this.conversationService = conversationService;
-    }
-
-    @Autowired
-    public void setNewClientService(NewClientService newClientService) {
-        this.newClientService = newClientService;
-    }
-
-    @Autowired
-    public void setConnectionService(ClientsConnectionService connectionService) {
-        this.connectionService = connectionService;
-    }
 }

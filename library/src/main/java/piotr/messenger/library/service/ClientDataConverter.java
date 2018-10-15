@@ -36,7 +36,7 @@ public class ClientDataConverter {
         return buffer;
     }
 
-    public static List<String> decodeListFromServer(int listSize, ByteBuffer buffer) {
+    public static List<String> decodeBufferToList(int listSize, ByteBuffer buffer) {
         List<String> clientsNames = new ArrayList<>(listSize);
         byte[] array = new byte[Constants.RECORD_LENGTH];
         for (int i = 0; i < listSize; i++) {

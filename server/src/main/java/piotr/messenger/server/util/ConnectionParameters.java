@@ -1,4 +1,4 @@
-package piotr.messenger.server.service;
+package piotr.messenger.server.util;
 
 import lombok.Getter;
 import org.springframework.stereotype.Component;

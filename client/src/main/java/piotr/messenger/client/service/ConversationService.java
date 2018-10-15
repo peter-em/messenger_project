@@ -1,46 +1,46 @@
 package piotr.messenger.client.service;
 
 import lombok.Getter;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
-import piotr.messenger.client.core.ConversationThread;
 import piotr.messenger.client.gui.PrintWriteAreas;
 import piotr.messenger.client.gui.listener.ConvKeyListener;
-import piotr.messenger.client.util.ConvParameters;
 import piotr.messenger.library.Constants;
 
 import javax.swing.*;
 import java.awt.*;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.concurrent.BlockingQueue;
 
 
 @Component
 public class ConversationService {
 
-    private final @Getter Map<String, BlockingQueue<String>> writeQueues = new HashMap<>();
-    private @Getter PrintWriteAreas areas;
-    private ConvKeyListener convKeyListener;
+    private final @Getter PrintWriteAreas areas;
+    private final ConvKeyListener convKeyListener;
+    private final JTabbedPane appTabbs;
 
-
-    public void stopConvThreads() {
-
-        for (BlockingQueue<String> queue : writeQueues.values()) {
-            queue.add("");
-        }
+    public ConversationService(PrintWriteAreas areas,
+                               ConvKeyListener convKeyListener,
+                               JTabbedPane appTabbs) {
+        this.areas = areas;
+        this.convKeyListener = convKeyListener;
+        this.appTabbs = appTabbs;
     }
 
-    // create tab and thread for new conversation
-    public void createConversation(ConvParameters params, JTabbedPane appTabs) {
+    public boolean isConvPageCreated(String remoteUser) {
+        for (int i = 1; i < appTabbs.getTabCount(); i++) {
+            if (appTabbs.getTitleAt(i).equals(remoteUser)) {
+                return true;
+            }
+        }
+        return false;
+    }
 
-        createConvPage(params.getRemoteUser(), appTabs);
-        ConversationThread convThread = new ConversationThread(params, appTabs, writeQueues, areas);
-        new Thread(convThread).start();
+    public void removeConvPage(String convUser) {
+        areas.getWriteAreas().remove(convUser);
+        areas.getPrintAreas().remove(convUser);
     }
 
     //method creating new tab for conversation
-    private void createConvPage(String convUser, JTabbedPane appTabbs) {
+    public void createConvPage(String convUser) {
 
         JTextArea printArea = new JTextArea();
         printArea.setFont(Constants.AREA_FONT);
@@ -85,13 +85,4 @@ public class ConversationService {
             }
     }
 
-    @Autowired
-    public void setAreas(PrintWriteAreas areas) {
-        this.areas = areas;
-    }
-
-    @Autowired
-    public void setConvKeyListener(ConvKeyListener convKeyListener) {
-        this.convKeyListener = convKeyListener;
-    }
 }
