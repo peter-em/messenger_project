@@ -1,7 +1,6 @@
 package piotr.messenger.server.core;
 
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import piotr.messenger.server.util.ConnectionParameters;
 import piotr.messenger.server.service.AuthorizationService;
@@ -13,30 +12,33 @@ import java.nio.channels.SocketChannel;
 import java.nio.channels.Selector;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.CancelledKeyException;
+import java.nio.channels.spi.SelectorProvider;
 import java.util.Iterator;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 @Component
+@Slf4j
 public class AuthorizationWorker implements Runnable {
 
-	private Selector selector;
-	private Logger logger;
-	private AuthorizationService authorizationService;
-	private ConnectionParameters parameters;
-	private ConversationsWorker worker;
+	private final AuthorizationService authorizationService;
+	private final ConversationsWorker worker;
+	private final ConnectionParameters parameters;
 
-    public AuthorizationWorker() {
-        logger = LoggerFactory.getLogger(AuthorizationWorker.class);
+    public AuthorizationWorker(AuthorizationService authorizationService,
+                               ConversationsWorker worker,
+                               ConnectionParameters parameters) {
+        this.authorizationService = authorizationService;
+        this.worker = worker;
+        this.parameters = parameters;
         System.setProperty("sun.net.useExclusiveBind", "false");
     }
 
     @Override
 	public void run() {
 
-        try (ServerSocketChannel serverSocket = ServerSocketChannel.open()) {
-            openSocket(serverSocket);
+        try (ServerSocketChannel serverSocket = ServerSocketChannel.open();
+             Selector selector = SelectorProvider.provider().openSelector()) {
+            openSocket(serverSocket, selector);
             Thread task = new Thread(worker);
             task.start();
 
@@ -50,26 +52,26 @@ public class AuthorizationWorker implements Runnable {
 
             while (!Thread.interrupted()) {
 
-                authorizationService.updateClients();
+                authorizationService.updateClients(selector);
 
                 //iterating through set of keys which have available events
                 selector.select();
                 SelectionKey key;
-                Iterator<SelectionKey> selectedKeys = selector.selectedKeys().iterator();
-                while (selectedKeys.hasNext()) {
-                    key = selectedKeys.next();
-                    selectedKeys.remove();
+                Iterator<SelectionKey> keyIterator = selector.selectedKeys().iterator();
+                while (keyIterator.hasNext()) {
+                    key = keyIterator.next();
+                    keyIterator.remove();
 
                     //check for available event and handle it
                     if (!key.isValid()) {
-                        logger.error("INVALID KEY");
+                        log.error("INVALID KEY");
                         key.cancel();
 
                     } else if (key.isAcceptable()) {
-                        authorizationService.acceptClient(serverSocket);
+                        authorizationService.acceptClient(serverSocket.accept(), selector);
 
                     } else if (key.isReadable()) {
-                        authorizationService.readClientData((SocketChannel) key.channel());
+                        authorizationService.readClientData((SocketChannel) key.channel(), selector);
 
                     } else if (key.isWritable()) {
                         authorizationService.writeClientData((SocketChannel) key.channel());
@@ -79,46 +81,25 @@ public class AuthorizationWorker implements Runnable {
             }
 
         } catch (IOException ioEx) {
-            logger.error("Problem occured while listening for events - "
+            log.error("Problem occured while listening for events - "
                     + ioEx.getMessage());
         } catch (CancelledKeyException cancelled) {
-            logger.error("Cancelled ({}).", cancelled.getMessage());
+            log.error("Cancelled ({}).", cancelled.getMessage());
             Thread.currentThread().interrupt();
         } catch (InterruptedException abqEx) {
-            logger.error("ArrayBlockingQueue error ({})", abqEx.getMessage());
+            log.error("ArrayBlockingQueue error ({})", abqEx.getMessage());
             Thread.currentThread().interrupt();
         }
 
         worker.stopWorker();
-		logger.info("Closing server");
+		log.info("Closing server");
 	}
 
-	private void openSocket(ServerSocketChannel serverSocket) throws IOException {
+	private void openSocket(ServerSocketChannel serverSocket, Selector selector) throws IOException {
         serverSocket.configureBlocking(false);
         serverSocket.socket().bind(new InetSocketAddress(parameters.getHostAddress(), parameters.getHostPort()));
         serverSocket.register(selector, SelectionKey.OP_ACCEPT);
 
-        logger.info("Starting server, port in use: {}.", parameters.getHostPort());
+        log.info("Starting server, port in use: {}.", parameters.getHostPort());
 	}
-
-    @Autowired
-    public void setSelector(@Qualifier("mainSelector") Selector selector) {
-        this.selector = selector;
-    }
-
-    @Autowired
-    public void setAuthorizationService(AuthorizationService authorizationService) {
-        this.authorizationService = authorizationService;
-    }
-
-    @Autowired
-    public void setParameters(ConnectionParameters parameters) {
-        this.parameters = parameters;
-    }
-
-    @Autowired
-    public void setWorker(ConversationsWorker worker) {
-        this.worker = worker;
-    }
 }
-

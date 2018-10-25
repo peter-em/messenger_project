@@ -12,7 +12,6 @@ import javax.swing.JTextArea;
 import java.awt.event.InputEvent;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
-import java.util.Map;
 import java.util.concurrent.BlockingQueue;
 
 
@@ -20,8 +19,7 @@ import java.util.concurrent.BlockingQueue;
 @Qualifier("convKeyListener")
 public class ConvKeyListener extends KeyAdapter {
 
-    private Map<String, JTextArea> writeAreas;
-    private Map<String, JTextArea> printAreas;
+    private PrintWriteAreas areas;
     private BlockingQueue<TransferData> messageQueue;
     private JTabbedPane appTabbs;
 
@@ -35,7 +33,7 @@ public class ConvKeyListener extends KeyAdapter {
             int idx = appTabbs.getSelectedIndex();
             if (idx > 0) {
                 String tabName = appTabbs.getTitleAt(idx);
-                JTextArea tmpWrite = writeAreas.get(tabName);
+                JTextArea tmpWrite = areas.getWriteAreas().get(tabName);
                 if (e.getModifiers() == InputEvent.SHIFT_MASK) {
                     tmpWrite.append("\n");
                     return;
@@ -44,7 +42,7 @@ public class ConvKeyListener extends KeyAdapter {
                 if (text.length() != 0) {
 
                     messageQueue.add(new TransferData(tabName, text));
-                    WindowMethods.printMessage("me", text, printAreas.get(tabName));
+                    WindowMethods.printMessage("me", text, areas.getPrintAreas().get(tabName));
                     tmpWrite.setText("");
                 }
             }
@@ -52,13 +50,8 @@ public class ConvKeyListener extends KeyAdapter {
     }
 
     @Autowired
-    public void setPrintAreas(PrintWriteAreas areas) {
-        this.printAreas = areas.getPrintAreas();
-    }
-
-    @Autowired
-    public void setWriteAreas(PrintWriteAreas areas) {
-        this.writeAreas = areas.getWriteAreas();
+    public void setAreas(PrintWriteAreas areas) {
+        this.areas = areas;
     }
 
     @Autowired

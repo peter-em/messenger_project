@@ -1,8 +1,8 @@
 package piotr.messenger.server.util;
 
 import lombok.Getter;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
-import piotr.messenger.library.Constants;
 
 import java.util.LinkedList;
 import java.util.List;
@@ -10,16 +10,16 @@ import java.util.List;
 @Component
 public class ConnectionParameters {
 
-    private final @Getter String hostAddress;
-    private final @Getter int hostPort;
+    @Value("${server.string.hostaddress}")
+    private @Getter String hostAddress;
+    @Value("${server.int.hostport}")
+    private @Getter int hostPort;
     private final @Getter List<Integer> executorPorts;
     private int lastUsedPort;
 
     public ConnectionParameters() {
-        hostAddress = Constants.HOST_ADDRESS;
-        hostPort = Constants.PORT_NR;
         executorPorts = new LinkedList<>();
-        lastUsedPort = 0;
+        lastUsedPort = -1;
     }
 
     public int getWorkerPort() {

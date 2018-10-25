@@ -26,7 +26,7 @@ public class MainWindowBeans {
 
     @Bean(name="mainFrame")
     public JFrame getFrame(@Qualifier("mainPanel") JPanel mainPanel,
-                           @Qualifier("appWindowListener") WindowListener windowListener) {
+                           @Qualifier("mainWindowListener") WindowListener windowListener) {
         JFrame appFrame = new JFrame();
         appFrame.setTitle(Constants.APP_NAME);
         appFrame.setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE);

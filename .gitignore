@@ -1,7 +1,4 @@
-out/
-*.class
 .idea/
 *.iml
 target/
 server/src/main/resources/application.properties
-TODO.txt

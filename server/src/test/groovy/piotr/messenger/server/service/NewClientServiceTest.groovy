@@ -26,7 +26,7 @@ class NewClientServiceTest extends Specification {
     NewClientService service
 
     def setup() {
-        dataBuffer = ByteBuffer.allocate(16)
+        dataBuffer = ByteBuffer.allocate(32)
         dataBuffer.putInt(0).putInt(0)
 
         database = Mock()
@@ -55,7 +55,9 @@ class NewClientServiceTest extends Specification {
     def 'Should return -2 if someone already logged into provided account'() {
         given:'Mocked connectionservice'
         connectionService.isAuthenticated(_ as String) >> true
-        dataBuffer.putInt(0)
+        dataBuffer.putInt(1).put("l".getBytes(Constants.CHARSET))
+        dataBuffer.putInt(1).put("p".getBytes(Constants.CHARSET))
+        dataBuffer.putInt(1)
         dataBuffer.flip()
 
         when:'handleData checks if such client is already logged in'

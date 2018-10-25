@@ -13,7 +13,7 @@ import java.awt.event.WindowEvent;
 
 @Component
 @Qualifier("appWindowListener")
-public class AppWindowListener extends WindowAdapter {
+public class MainWindowListener extends WindowAdapter {
 
     private JTabbedPane appTabbs;
     private JPanel mainPanel;

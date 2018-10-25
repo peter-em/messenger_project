@@ -1,7 +1,6 @@
 package piotr.messenger.server.core;
 
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 import piotr.messenger.library.Constants;
 import piotr.messenger.library.service.ClientDataConverter;
@@ -18,12 +17,16 @@ import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
+import java.nio.channels.spi.SelectorProvider;
 import java.util.*;
+
 
 @Component
 @Slf4j
 public class ConversationsWorker implements Runnable {
 
+    @Resource private ClientsConnectionService connections;
+    @Resource private ConnectionParameters parameters;
     private volatile boolean isRunning;
     private String handlerAddress;
     private int handlerPort;
@@ -32,15 +35,6 @@ public class ConversationsWorker implements Runnable {
     private final Map<SocketChannel, List<ByteBuffer>> writingBuffers = new HashMap<>();
     private ByteBuffer buffer;
 
-    @Resource
-    private ClientsConnectionService connections;
-
-    @Resource
-    private ConnectionParameters parameters;
-
-    @Resource
-    @Qualifier("convSelector")
-    private Selector convSelector;
 
     @PostConstruct
     private void init() {
@@ -50,23 +44,15 @@ public class ConversationsWorker implements Runnable {
         buffer = ByteBuffer.allocate(Constants.BUFFER_SIZE);
     }
 
-    private void openSocket(ServerSocketChannel handler) throws IOException {
-
-        handler.configureBlocking(false);
-        handler.socket().bind(new InetSocketAddress(handlerAddress, handlerPort));
-        handler.register(convSelector, SelectionKey.OP_ACCEPT);
-        isRunning = true;
-    }
-
-
     @Override
     public void run() {
 
         Thread.currentThread().setName("Worker (" + handlerPort + ")");
 
-        try (ServerSocketChannel handler = ServerSocketChannel.open()) {
+        try (ServerSocketChannel handler = ServerSocketChannel.open();
+             Selector convSelector = SelectorProvider.provider().openSelector()) {
 
-            openSocket(handler);
+            openSocket(handler, convSelector);
             log.info("Worker started");
 
             while (isRunning) {
@@ -83,9 +69,11 @@ public class ConversationsWorker implements Runnable {
                     if (!key.isValid()) {
                         key.cancel();
                     } else if (key.isAcceptable()) {
-                        acceptUser(handler);
+                        acceptUser(handler, convSelector);
+
                     } else if (key.isReadable()) {
-                        read((SocketChannel) key.channel());
+                        read((SocketChannel) key.channel(), convSelector);
+
                     } else if (key.isWritable()) {
                         write((SocketChannel) key.channel());
                         key.interestOps(SelectionKey.OP_READ);
@@ -100,7 +88,16 @@ public class ConversationsWorker implements Runnable {
 
     }
 
-    private void acceptUser(ServerSocketChannel handler) throws IOException {
+    private void openSocket(ServerSocketChannel handler, Selector convSelector) throws IOException {
+
+        log.error("port: {}", handlerPort);
+        handler.configureBlocking(false);
+        handler.socket().bind(new InetSocketAddress(handlerAddress, handlerPort));
+        handler.register(convSelector, SelectionKey.OP_ACCEPT);
+        isRunning = true;
+    }
+
+    private void acceptUser(ServerSocketChannel handler, Selector convSelector) throws IOException {
 
         //accept connection, set it to non-blocking mode
         SocketChannel newClient = handler.accept();
@@ -110,7 +107,7 @@ public class ConversationsWorker implements Runnable {
         hasIntroduced.put(newClient, false);
     }
 
-    private void read(SocketChannel channel) throws IOException {
+    private void read(SocketChannel channel, Selector convSelector) throws IOException {
 
         buffer.clear();
         int bytesRead = -1;
@@ -130,7 +127,7 @@ public class ConversationsWorker implements Runnable {
 
         buffer.flip();
         if (hasIntroduced.get(channel)) {
-            handleMessage(channel);
+            handleMessage(channel, convSelector);
             return;
         }
 
@@ -161,7 +158,7 @@ public class ConversationsWorker implements Runnable {
         log.info("channelMap.size: {}", channelMap.size());
     }
 
-    private void handleMessage(SocketChannel channel) throws IOException {
+    private void handleMessage(SocketChannel channel, Selector convSelector) throws IOException {
         List<String> list = readLogins(2);
         if (list.isEmpty()) {
             removeChannel(channel);
@@ -172,15 +169,11 @@ public class ConversationsWorker implements Runnable {
         // 1 - receiver of a message
         SocketChannel receiver = channelMap.get(list.get(1));
         if (receiver != null) {
-            send(receiver, Arrays.copyOf(buffer.array(), buffer.limit()));
+            byte[] data = Arrays.copyOf(buffer.array(), buffer.limit());
+            writingBuffers.get(receiver).add(ByteBuffer.wrap(data));
+            SelectionKey selectionKey = receiver.keyFor(convSelector);
+            selectionKey.interestOps(SelectionKey.OP_WRITE);
         }
-    }
-
-    private void send(SocketChannel channel, byte[] data) {
-
-        writingBuffers.get(channel).add(ByteBuffer.wrap(data));
-        SelectionKey selectionKey = channel.keyFor(convSelector);
-        selectionKey.interestOps(SelectionKey.OP_WRITE);
     }
 
     private List<String> readLogins(int size) {
@@ -198,11 +191,11 @@ public class ConversationsWorker implements Runnable {
         removeMappings(channel);
     }
 
-    public boolean isRunning() {
+    boolean isRunning() {
         return isRunning;
     }
 
-    public void stopWorker() {
+    void stopWorker() {
         isRunning = false;
     }
 }

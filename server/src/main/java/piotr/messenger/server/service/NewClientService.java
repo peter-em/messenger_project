@@ -25,12 +25,11 @@ public class NewClientService {
         try {
             clientData = ClientDataConverter.decodeFromBuffer(readBuffer);
         } catch (BufferUnderflowException | IndexOutOfBoundsException ex) {
-            // TODO consider making this catch throw new Exception
-            // TODO (i.e InvalidClientException) instead of returning -4
             return -4;
         }
 
-        if (connectionService.isAuthenticated(clientData.getLogin())) {
+        if (clientData.getConnectMode() == Constants.LOGIN_MODE
+                && connectionService.isAuthenticated(clientData.getLogin())) {
             return -2;
         }
 
