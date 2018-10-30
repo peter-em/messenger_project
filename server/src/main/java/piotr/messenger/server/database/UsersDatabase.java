@@ -4,14 +4,14 @@ import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Component;
 import piotr.messenger.library.util.ClientData;
 import piotr.messenger.server.database.model.UserJPA;
-import piotr.messenger.server.database.service.UsersJPAService;
+import piotr.messenger.server.database.service.UserJPAService;
 
 
 @Component
 @AllArgsConstructor
 public class UsersDatabase {
 
-    private final UsersJPAService jpaService;
+    private final UserJPAService jpaService;
 
     public boolean verifyClient(ClientData data) {
 
@@ -31,5 +31,4 @@ public class UsersDatabase {
         }
         return false;
     }
-
 }

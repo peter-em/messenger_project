@@ -8,12 +8,11 @@ import piotr.messenger.server.database.repository.IUserRepository;
 import javax.annotation.Resource;
 
 @Service
-public class UsersJPAService implements UsersDAO<UserJPA> {
+public class UserJPAService {
 
     @Resource
     private IUserRepository repository;
 
-    @Override
     public void registerUser(String login, String password) {
         UserJPA user = new UserJPA();
         user.setLogin(login);
@@ -21,19 +20,16 @@ public class UsersJPAService implements UsersDAO<UserJPA> {
         repository.save(user);
     }
 
-    @Override
     public UserJPA getUser(String login) {
         return repository.findByLogin(login).orElse(new UserJPA());
     }
 
-    @Override
     public boolean hasUser(String login) {
         UserJPA user = new UserJPA();
         user.setLogin(login);
         return repository.exists(Example.of(user));
     }
 
-    @Override
     public void updateLastLogged(UserJPA user) {
         user.setLastloggedAt(null);
         repository.save(user);

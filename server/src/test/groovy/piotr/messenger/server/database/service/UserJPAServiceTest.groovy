@@ -10,11 +10,11 @@ import spock.lang.Unroll
 import javax.annotation.Resource
 
 @SpringBootTest
-class UsersJPAServiceTest extends Specification {
+class UserJPAServiceTest extends Specification {
 
     @Resource
     @Subject
-    UsersJPAService service
+    UserJPAService service
 
     @Resource
     IUserRepository repository

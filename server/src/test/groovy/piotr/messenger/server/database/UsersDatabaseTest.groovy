@@ -2,7 +2,7 @@ package piotr.messenger.server.database
 
 import piotr.messenger.library.util.ClientData
 import piotr.messenger.server.database.model.UserJPA
-import piotr.messenger.server.database.service.UsersJPAService
+import piotr.messenger.server.database.service.UserJPAService
 
 import spock.lang.Specification
 import spock.lang.Subject
@@ -11,7 +11,7 @@ import spock.lang.Unroll
 
 class UsersDatabaseTest extends Specification {
 
-    UsersJPAService service
+    UserJPAService service
     @Subject UsersDatabase database
     def data = new ClientData(null,null,0)
 

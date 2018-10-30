@@ -2,7 +2,7 @@ package piotr.messenger.server.core;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
-import piotr.messenger.server.util.ConnectionParameters;
+import piotr.messenger.server.util.ServerPorts;
 import piotr.messenger.server.service.AuthorizationService;
 
 import java.io.IOException;
@@ -22,14 +22,14 @@ public class AuthorizationWorker implements Runnable {
 
 	private final AuthorizationService authorizationService;
 	private final ConversationsWorker worker;
-	private final ConnectionParameters parameters;
+	private final ServerPorts ports;
 
     public AuthorizationWorker(AuthorizationService authorizationService,
                                ConversationsWorker worker,
-                               ConnectionParameters parameters) {
+                               ServerPorts ports) {
         this.authorizationService = authorizationService;
         this.worker = worker;
-        this.parameters = parameters;
+        this.ports = ports;
         System.setProperty("sun.net.useExclusiveBind", "false");
     }
 
@@ -97,9 +97,9 @@ public class AuthorizationWorker implements Runnable {
 
 	private void openSocket(ServerSocketChannel serverSocket, Selector selector) throws IOException {
         serverSocket.configureBlocking(false);
-        serverSocket.socket().bind(new InetSocketAddress(parameters.getHostAddress(), parameters.getHostPort()));
+        serverSocket.socket().bind(new InetSocketAddress(ports.getHostPort()));
         serverSocket.register(selector, SelectionKey.OP_ACCEPT);
 
-        log.info("Starting server, port in use: {}.", parameters.getHostPort());
+        log.info("Starting server, port in use: {}.", ports.getHostPort());
 	}
 }

@@ -24,7 +24,7 @@ class ClientDataConverterTest extends Specification {
 
     def "Should returned ClientData object be equal after conversions"() {
         given:
-        ClientData inData = new ClientData("login", "password", 0)
+        ClientData inData = new ClientData("login", "password", 1)
 
         when:
         ByteBuffer buffer = ClientDataConverter.encodeToBuffer(inData)

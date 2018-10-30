@@ -3,7 +3,7 @@ package piotr.messenger.server.core
 import org.springframework.boot.test.context.SpringBootTest
 import piotr.messenger.library.Constants
 import piotr.messenger.server.service.AuthorizationService
-import piotr.messenger.server.util.ConnectionParameters
+import piotr.messenger.server.util.ServerPorts
 import spock.lang.Specification
 import spock.lang.Subject
 
@@ -20,7 +20,7 @@ class AuthorizationWorkerTest extends Specification {
     @Resource
     AuthorizationService authService
     @Resource
-    ConnectionParameters parameters
+    ServerPorts parameters
     ConversationsWorker worker
     Thread task
 

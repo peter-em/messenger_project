@@ -3,7 +3,7 @@ package piotr.messenger.server.service;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import piotr.messenger.library.Constants;
-import piotr.messenger.server.util.ConnectionParameters;
+import piotr.messenger.server.util.ServerPorts;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -19,12 +19,12 @@ public class AuthorizationService {
 
     private final ClientsConnectionService connectionService;
     private final NewClientService newClientService;
-    private final ConnectionParameters parameters;
+    private final ServerPorts parameters;
     private boolean updateClietsUserList;
 
     public AuthorizationService(NewClientService newClientService,
                                 ClientsConnectionService connectionService,
-                                ConnectionParameters parameters) {
+                                ServerPorts parameters) {
         this.newClientService = newClientService;
         this.connectionService = connectionService;
         this.parameters = parameters;
@@ -76,7 +76,7 @@ public class AuthorizationService {
             readBuffer.putInt(response);
             if (response == 0) {
                 updateClietsUserList = true;
-                readBuffer.putInt(parameters.getLastUsedPort());
+                readBuffer.putInt(parameters.getWorkerPort());
             }
 
             readBuffer.flip();
