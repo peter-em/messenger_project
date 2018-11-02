@@ -5,7 +5,7 @@ import org.springframework.stereotype.Component;
 import piotr.messenger.library.Constants;
 import piotr.messenger.library.service.ClientDataConverter;
 import piotr.messenger.server.database.MessagesDatabase;
-import piotr.messenger.server.database.UsersDatabase;
+import piotr.messenger.server.database.model.Message;
 
 import javax.annotation.PostConstruct;
 import javax.annotation.Resource;
@@ -16,13 +16,13 @@ import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
+import java.time.LocalDateTime;
 import java.util.*;
 
 @Component
 @Slf4j
 public class ConversationsService {
 
-//    @Resource private UsersDatabase usersDB;
     @Resource private MessagesDatabase messagesDB;
     @Resource private ClientsConnectionService connections;
     private Map<SocketChannel, Boolean> hasIntroduced = new HashMap<>();
@@ -98,26 +98,64 @@ public class ConversationsService {
     }
 
     private void handleMessage(SocketChannel channel, Selector convSelector) throws IOException {
-        List<String> list = readLogins(2);
-        if (list.isEmpty()) {
-            removeChannel(channel);
-            return;
-        }
+
+        int messageMode = buffer.getInt();
+
         // non empty list contains elements:
         // 0 - sender of a message
         // 1 - receiver of a message
-        SocketChannel receiver = channelMap.get(list.get(1));
-
-        if (receiver != null) {
-
-            byte[] data = Arrays.copyOf(buffer.array(), buffer.limit());
-            archiveMessage(list.get(0), list.get(1));
-
-            writingBuffers.get(receiver).add(ByteBuffer.wrap(data));
-            SelectionKey selectionKey = receiver.keyFor(convSelector);
-            selectionKey.interestOps(SelectionKey.OP_WRITE);
+        List<String> logins = readLogins(2);
+        if (logins.isEmpty()) {
+            removeChannel(channel);
+            return;
         }
+
+        String content = new String(Arrays.copyOfRange(buffer.array(), buffer.position(), buffer.limit()));
+        buffer.clear();
+
+        SocketChannel destination;
+        List<Message> messages;
+        if (messageMode == Constants.REGULAR_MSG) {
+            destination = channelMap.get(logins.get(1));
+
+            messages = messagesDB.archiveMessage(logins.get(0), logins.get(1), content);
+            logins.set(1, "");
+            if (destination == null)
+                return;
+
+        } else {
+            destination = channel;
+            messages = messagesDB.getArchivedMessages(logins.get(0), logins.get(1), LocalDateTime.parse(content));
+        }
+
+        ByteBuffer sendBuffer = ByteBuffer.allocate(Constants.BUFFER_SIZE);
+        sendBuffer.putInt(messageMode);     // insert message type
+        sendBuffer.putInt(messages.size()); // insert number of messages in buffer
+        sendBuffer.putInt(logins.get(1).length());                  // insert size and login of conv partner
+        sendBuffer.put(logins.get(1).getBytes(Constants.CHARSET));  // (for archived messages request)
+        for (Message message : messages) {
+            writeMessageToBuffer(message, sendBuffer);
+        }
+
+        sendBuffer.flip();
+        writingBuffers.get(destination).add(sendBuffer);
+        SelectionKey selectionKey = destination.keyFor(convSelector);
+        selectionKey.interestOps(SelectionKey.OP_WRITE);
     }
+
+
+    private void writeMessageToBuffer(Message message, ByteBuffer buffer) {
+        byte[] data = message.getAuthor().getBytes(Constants.CHARSET);
+        buffer.putInt(data.length);
+        buffer.put(data);
+        buffer.putInt(Constants.DATE_LENGTH);
+        buffer.put(message.getTime().toString().getBytes(Constants.CHARSET));
+        data = message.getContent().getBytes(Constants.CHARSET);
+        buffer.putInt(data.length);
+        buffer.put(data);
+    }
+
+    // TODO clients validation (sender and receiver) eventually
 
     private List<String> readLogins(int size) {
         try {
@@ -125,11 +163,6 @@ public class ConversationsService {
         } catch (BufferUnderflowException | IndexOutOfBoundsException ex) {
             return Collections.emptyList();
         }
-    }
-
-    private void archiveMessage(String login1, String login2) {
-        String content = new String(Arrays.copyOfRange(buffer.array(), buffer.position(), buffer.limit()));
-        messagesDB.addMessage(login1, login2, content);
     }
 
     // handler closes corresponding channel

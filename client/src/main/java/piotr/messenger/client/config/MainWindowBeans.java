@@ -3,7 +3,8 @@ package piotr.messenger.client.config;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.*;
-import piotr.messenger.client.gui.PrintWriteAreas;
+import piotr.messenger.client.gui.ConvComponents;
+import piotr.messenger.client.gui.listener.button.LoadMessagesButtonListener;
 import piotr.messenger.client.gui.listener.button.SendRequestButtonListener;
 import piotr.messenger.client.gui.panel.CenterPanel;
 import piotr.messenger.client.gui.panel.MainPanel;
@@ -17,6 +18,8 @@ import javax.swing.event.ChangeEvent;
 import javax.swing.event.ListSelectionEvent;
 import java.awt.*;
 import java.awt.event.WindowListener;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 
@@ -67,22 +70,23 @@ public class MainWindowBeans {
     }
 
     @Bean
-    public JToolBar getToolBar(@Qualifier("closeTabButton") JButton button) {
+    public JToolBar getToolBar(@Qualifier("closeTabButton") JButton close,
+                               @Qualifier("loadMsgButton") JButton load) {
         JToolBar toolBar = new JToolBar(SwingConstants.NORTH);
         toolBar.setBackground(new Color(62,90,49));
-        toolBar.setPreferredSize(new Dimension(50,27));
-        toolBar.setMinimumSize(new Dimension(46,22));
-        toolBar.setMaximumSize(new Dimension(58,27));
+        toolBar.setOrientation(SwingConstants.HORIZONTAL);
         toolBar.setMargin(new Insets(2,0,0,0));
         toolBar.setBorder(BorderFactory.createEmptyBorder(1,4,1,4));
-        toolBar.add(button);
+        toolBar.add(close);
+        toolBar.addSeparator();
+        toolBar.add(load);
 
         return toolBar;
     }
 
     @Bean
     public JTabbedPane getTabbedPane(@Qualifier("centerPanel") JPanel centerPanel,
-                                     PrintWriteAreas areas) {
+                                     Map<String, ConvComponents> convComponentsMap) {
         JTabbedPane pane = new JTabbedPane();
         pane.setTabLayoutPolicy(JTabbedPane.WRAP_TAB_LAYOUT);
         pane.add("Clients", centerPanel);
@@ -93,7 +97,7 @@ public class MainWindowBeans {
                 int idx = pane.getSelectedIndex();
                 if (idx > 0) {
                     String tabName = pane.getTitleAt(idx);
-                    areas.getWriteAreas().get(tabName).requestFocus();
+                    convComponentsMap.get(tabName).getWriteArea().requestFocus();
                 }
         });
         return pane;
@@ -146,11 +150,30 @@ public class MainWindowBeans {
 
     @Bean
     @Qualifier("closeTabButton")
-    public JButton getCloseButton(CloseTabButtonListener listener) {
-        JButton button = new JButton("Close Tab");
-        button.setBorderPainted(true);
-        button.setFocusable(false);
+    public JButton getCloseButton(@Qualifier("defaultButton") JButton button,
+                                  CloseTabButtonListener listener) {
+        button.setText("Close Tab");
         button.setPreferredSize(new Dimension(50,25));
+        button.addActionListener(listener);
+        return button;
+    }
+
+    @Bean
+    @Qualifier("loadMsgButton")
+    public JButton getLoadMsgButton(@Qualifier("defaultButton") JButton button,
+                                    LoadMessagesButtonListener listener) {
+        button.setText("Load Messages");
+        button.setPreferredSize(new Dimension(80,25));
+        button.addActionListener(listener);
+        return button;
+    }
+
+    @Bean
+    @Scope("prototype")
+    @Qualifier("defaultButton")
+    public JButton getDefaultButton() {
+        JButton button = new JButton();
+        button.setFocusable(false);
         button.setHorizontalTextPosition(JButton.CENTER);
         button.setRequestFocusEnabled(false);
         button.setRolloverEnabled(false);
@@ -158,7 +181,6 @@ public class MainWindowBeans {
         button.setFocusPainted(true);
         button.setFont(new Font(button.getFont().getName(), Font.BOLD, 12));
         button.setContentAreaFilled(false);
-        button.addActionListener(listener);
         return button;
     }
 
@@ -212,6 +234,11 @@ public class MainWindowBeans {
     @Qualifier("mainQueue")
     public BlockingQueue<TransferData> getMainQueue() {
         return new ArrayBlockingQueue<>(Constants.BLOCKING_SIZE);
+    }
+
+    @Bean
+    public Map<String, ConvComponents> convComponentsMap() {
+        return new HashMap<>();
     }
 
     @Bean

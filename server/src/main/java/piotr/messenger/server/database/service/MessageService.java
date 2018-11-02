@@ -1,17 +1,21 @@
 package piotr.messenger.server.database.service;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.stereotype.Service;
+import piotr.messenger.library.Constants;
 import piotr.messenger.server.database.model.Conversation;
 import piotr.messenger.server.database.model.Message;
 import piotr.messenger.server.database.repository.IConversationRepository;
 
 import javax.annotation.Resource;
 import java.time.LocalDateTime;
-import java.util.SortedSet;
-import java.util.TreeSet;
+import java.util.*;
 
 @Service
+@Slf4j
 public class MessageService {
 
     @Resource
@@ -33,16 +37,22 @@ public class MessageService {
         return conversation.getId();
     }
 
-    public String insertMessage(String convId, String author,
-                             LocalDateTime time, String content) {
-        Message message = Message.builder().author(author)
-                .time(time).content(content).build();
+    public void insertMessage(String convId, Message message) {
 
         msgRepo.save(message, convId);
-        return message.getId();
     }
 
-//    TODO implement reading messages from collection
-//    TO GET LAST MESSAGE FROM COLLECTION
-//    Document msg = msgRepo.getCollection(convId).find().sort(new BasicDBObject("_id", -1)).limit(1).first();
+    public List<Message> readArchivedMessages(String convId, LocalDateTime time) {
+        if (!msgRepo.collectionExists(convId))
+            return Collections.emptyList();
+
+        Query query = new Query(Criteria.where("time").lt(time));
+        long count = msgRepo.count(query, convId);
+        query.skip(count - Constants.ARCHIVED_COUNT);
+
+        List<Message> list = msgRepo.find(query, Message.class, convId);
+        Collections.reverse(list);
+        return list;
+    }
+
 }

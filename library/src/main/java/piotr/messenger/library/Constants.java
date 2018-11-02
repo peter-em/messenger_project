@@ -11,6 +11,9 @@ public class Constants {
     public static final Charset CHARSET = Charset.forName("UTF-8");
     public static final int BUFFER_SIZE = 1024;
     public static final int RECORD_LENGTH = 32;
+    public static final int ARCHIVED_COUNT = 5;
+    public static final int REGULAR_MSG = 100;
+    public static final int ARCHIVED_MSG = 200;
 
     // CONNECTION PARAMETERS
     public static final int PORT_NR = 6125;
@@ -40,11 +43,12 @@ public class Constants {
     public static final String SWITCH_TO_REGISTER = "Dont't have account? Register here";
     public static final String LOGIN_BUTTON = "Log In";
     public static final String REGISTER_BUTTON = "Register";
-    public static final String C_REQUEST = "a";
     public static final String C_TERMINATE = "t";
     public static final int BLOCKING_SIZE = 8;
     public static final int LOGIN_MODE = 1;
     public static final int REGISTER_MODE = 2;
+    public static final int DATE_LENGTH = 23;
+    public static final int C_REQUEST = 50;
 
     public static final Color TEXT_AREA_COLOR = new Color(84, 88, 90);
     public static final Color TEXT_COLOR = new Color(242,242,242);

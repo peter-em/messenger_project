@@ -1,6 +1,5 @@
 package piotr.messenger.server.database.model;
 
-import lombok.Data;
 import lombok.Getter;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
@@ -12,8 +11,10 @@ public class Conversation {
     @Getter
     private String id;
 
-    private String first;
-    private String second;
+    @Getter
+    private final String first;
+    @Getter
+    private final String second;
 
     public Conversation(String first, String second) {
         this.first = first;

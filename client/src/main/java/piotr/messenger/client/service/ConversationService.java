@@ -2,25 +2,27 @@ package piotr.messenger.client.service;
 
 import lombok.Getter;
 import org.springframework.stereotype.Component;
-import piotr.messenger.client.gui.PrintWriteAreas;
+import piotr.messenger.client.gui.ConvComponents;
 import piotr.messenger.client.gui.listener.ConvKeyListener;
 import piotr.messenger.library.Constants;
 
 import javax.swing.*;
 import java.awt.*;
+import java.time.LocalDateTime;
+import java.util.Map;
 
 
 @Component
 public class ConversationService {
 
-    private final @Getter PrintWriteAreas areas;
+    private final @Getter Map<String, ConvComponents> convComponentsMap;
     private final ConvKeyListener convKeyListener;
     private final JTabbedPane appTabbs;
 
-    public ConversationService(PrintWriteAreas areas,
+    public ConversationService(Map<String, ConvComponents> convComponentsMap,
                                ConvKeyListener convKeyListener,
                                JTabbedPane appTabbs) {
-        this.areas = areas;
+        this.convComponentsMap = convComponentsMap;
         this.convKeyListener = convKeyListener;
         this.appTabbs = appTabbs;
     }
@@ -35,8 +37,7 @@ public class ConversationService {
     }
 
     public void removeConvPage(String convUser) {
-        areas.getWriteAreas().remove(convUser);
-        areas.getPrintAreas().remove(convUser);
+        convComponentsMap.remove(convUser);
     }
 
     //method creating new tab for conversation
@@ -72,8 +73,8 @@ public class ConversationService {
 
 
         appTabbs.addTab(convUser, panel);
-        areas.getWriteAreas().put(convUser, writeArea);
-        areas.getPrintAreas().put(convUser, printArea);
+        ConvComponents convComponents = new ConvComponents(printArea, writeArea, LocalDateTime.now());
+        convComponentsMap.put(convUser, convComponents);
 
 
         if (appTabbs.getSelectedIndex() == 0)

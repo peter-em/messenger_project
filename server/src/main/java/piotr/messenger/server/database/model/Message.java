@@ -15,8 +15,6 @@ public class Message {
     @Id
     private String id;
 
-//    private String convId;
-
     private String author;
     private LocalDateTime time;
     private String content;

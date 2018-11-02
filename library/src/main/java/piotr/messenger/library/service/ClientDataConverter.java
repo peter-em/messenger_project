@@ -44,9 +44,9 @@ public class ClientDataConverter {
 
     public static List<String> decodeBufferToList(int listSize, ByteBuffer buffer) {
         List<String> clientsNames = new ArrayList<>(listSize);
-        byte[] array = new byte[Constants.RECORD_LENGTH];
         for (int i = 0; i < listSize; i++) {
             int bytesToRead = buffer.getInt();
+            byte[] array = new byte[bytesToRead];
             clientsNames.add(getStringFromArray(buffer, array, bytesToRead));
         }
         return clientsNames;

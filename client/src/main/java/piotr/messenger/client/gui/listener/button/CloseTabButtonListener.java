@@ -20,7 +20,7 @@ public class CloseTabButtonListener extends MainWindowActionListener {
         int idx = appTabbs.getSelectedIndex();
         if (idx > 0) {
             String tabName = appTabbs.getTitleAt(idx);
-            mainDataQueue.add(new TransferData(Constants.C_TERMINATE, tabName));
+            mainDataQueue.add(new TransferData(Constants.C_TERMINATE, tabName, 0));
             appTabbs.removeTabAt(idx);
 
         }

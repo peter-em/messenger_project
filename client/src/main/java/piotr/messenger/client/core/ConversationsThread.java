@@ -5,7 +5,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
-import piotr.messenger.client.gui.PrintWriteAreas;
+import piotr.messenger.client.gui.ConvComponents;
 import piotr.messenger.client.service.ConversationService;
 import piotr.messenger.client.service.WindowMethods;
 import piotr.messenger.client.util.ConvParameters;
@@ -17,7 +17,10 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
 
@@ -26,7 +29,7 @@ import java.util.concurrent.TimeUnit;
 public class ConversationsThread implements Runnable {
 
     private ConvParameters parameters;
-    private PrintWriteAreas areas;
+    private Map<String, ConvComponents> convComponentsMap;
     private ConversationService convService;
     private BlockingQueue<TransferData> messageQueue;
     private ByteBuffer buffer = ByteBuffer.allocate(1024);
@@ -49,8 +52,8 @@ public class ConversationsThread implements Runnable {
 
             int time = 0;
             while (!channel.finishConnect()) {
-                TimeUnit.MILLISECONDS.sleep(10);
-                if (++time > 50) {
+                TimeUnit.MILLISECONDS.sleep(5);
+                if (++time > 100) {
                     throw new IOException("Connection could not be finalized");
                 }
             }
@@ -66,7 +69,7 @@ public class ConversationsThread implements Runnable {
             while (isRunning) {
                 reader(channel);
                 writer(channel);
-                TimeUnit.MILLISECONDS.sleep(80);
+                TimeUnit.MILLISECONDS.sleep(50);
             }
 
         } catch (IOException ioEx) {
@@ -94,27 +97,57 @@ public class ConversationsThread implements Runnable {
 
         buffer.flip();
 
-        // list users contains two (2) userNames
-        // 0 - sender of this message
-        // 1 - receiver of this message (current, local user)(unimportant)
-        List<String> users = ClientDataConverter.decodeBufferToList(2, buffer);
-        String message = new String(buffer.slice().array(), buffer.position(), buffer.remaining(), Constants.CHARSET);
+        int messageMode = buffer.getInt();
+        int messageCount = buffer.getInt();
 
-        if (!convService.isConvPageCreated(users.get(0))) {
-            convService.createConvPage(users.get(0));
-        }
+        // list data contains fields
+        // 0 - conv partner (remoter user) or empty
+        // next (3 * messageCount) fields:
+        //    field1: author of a message
+        //    field2: localdatetime of a message
+        //    field3: content of a message
+        List<String> data = ClientDataConverter.decodeBufferToList(3 * messageCount + 1, buffer);
 
-        if (message.length() > 0) {
-            WindowMethods.printMessage(users.get(0), message, areas.getPrintAreas().get(users.get(0)));
+        if (messageMode == Constants.REGULAR_MSG) {
+            LocalDateTime localDateTime = LocalDateTime.parse(data.get(2));
+            data.set(0, data.get(1));
+            if (!convComponentsMap.containsKey(data.get(0))) {
+                convService.createConvPage(data.get(0));
+                convComponentsMap.get(data.get(0)).setOldestMessage(localDateTime);
+                messageQueue.add(new TransferData(data.get(0), data.get(2), Constants.ARCHIVED_MSG));
+            }
+
+            WindowMethods.printNewMessage(data.get(1), data.get(3), localDateTime.toLocalTime(),
+                    convComponentsMap.get(data.get(0)).getPrintArea());
+
+        } else if (messageMode == Constants.ARCHIVED_MSG) {
+            String conversation = data.get(0);
+            LocalDateTime localDateTime = convComponentsMap.get(conversation).getOldestMessage();
+            for (int i = 0; i < messageCount; ++i) {
+
+                localDateTime = LocalDateTime.parse(data.get(3*i + 2));
+                WindowMethods.printArchivedMessage(data.get(3*i + 1), data.get(3*i + 3), localDateTime.toLocalTime(),
+                        convComponentsMap.get(conversation).getPrintArea());
+
+            }
+            convComponentsMap.get(conversation).setOldestMessage(localDateTime);
         }
     }
 
 
     private void writer(SocketChannel channel) throws IOException, InterruptedException {
 
-        if (!messageQueue.isEmpty()) {
+        while (!messageQueue.isEmpty()) {
 
             TransferData input = messageQueue.take();
+            if (input.getMsgMode() == Constants.C_REQUEST) {
+                if (convComponentsMap.containsKey(input.getType())) {
+                    continue;
+                }
+                convService.createConvPage(input.getType());
+                input.setMsgMode(Constants.ARCHIVED_MSG);
+            }
+
             prepareBuffer(input);
             channel.write(buffer);
         }
@@ -122,8 +155,13 @@ public class ConversationsThread implements Runnable {
 
     private void prepareBuffer(TransferData input) {
         buffer.clear();
-        buffer.putInt(parameters.getUserName().length()).put(parameters.getUserName().getBytes(Constants.CHARSET));
-        buffer.putInt(input.getType().length()).put(input.getType().getBytes(Constants.CHARSET));
+        buffer.putInt(input.getMsgMode());
+        byte[] data = parameters.getUserName().getBytes(Constants.CHARSET);
+        buffer.putInt(data.length);
+        buffer.put(data);
+        data = input.getType().getBytes(Constants.CHARSET);
+        buffer.putInt(data.length);
+        buffer.put(data);
         buffer.put(input.getContent().getBytes(Constants.CHARSET));
         buffer.flip();
     }
@@ -137,8 +175,8 @@ public class ConversationsThread implements Runnable {
     }
 
     @Autowired
-    public void setAreas(PrintWriteAreas areas) {
-        this.areas = areas;
+    public void setConvComponentsMap(Map<String, ConvComponents> convComponentsMap) {
+        this.convComponentsMap = convComponentsMap;
     }
 
     @Autowired
