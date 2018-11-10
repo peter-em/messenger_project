@@ -18,7 +18,6 @@ import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
 import java.time.LocalDateTime;
-import java.time.LocalTime;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.BlockingQueue;
@@ -60,7 +59,8 @@ public class ConversationsThread implements Runnable {
             Thread.currentThread().setName("ConvWorker(" + parameters.getHostPort() + ")");
 
             // send userName in order to confirm connection on server side
-            buffer.putInt(parameters.getUserName().length()).put(parameters.getUserName().getBytes(Constants.CHARSET));
+            buffer.putInt(parameters.getUserName().getBytes(Constants.CHARSET).length);
+            buffer.put(parameters.getUserName().getBytes(Constants.CHARSET));
             buffer.flip();
             channel.write(buffer);
 

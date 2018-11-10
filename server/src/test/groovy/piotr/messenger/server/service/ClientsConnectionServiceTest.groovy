@@ -1,5 +1,6 @@
 package piotr.messenger.server.service
 
+import piotr.messenger.server.database.UsersDatabase
 import spock.lang.Specification
 import spock.lang.Subject
 import spock.lang.Unroll
@@ -14,7 +15,8 @@ class ClientsConnectionServiceTest extends Specification {
     static clientStr = "someuser"
 
     def setup() {
-        connectionService = new ClientsConnectionService()
+        UsersDatabase database = Mock()
+        connectionService = new ClientsConnectionService(database)
         connectionService.connectedClients.put(clientStr,clientChannel)
     }
 

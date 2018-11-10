@@ -87,8 +87,10 @@ public class MainThread implements Runnable {
             }
             userName = clientData.getLogin();
 
-            tmpBuffer = ClientDataConverter.encodeToBuffer(
-                    new ClientData(userName, clientData.getPassword(), clientData.getConnectMode()));
+            tmpBuffer = ClientDataConverter.encodeAuthToBuffer(
+                    new ClientData(userName,
+                            clientData.getPassword(),
+                            clientData.getConnectMode()));
 
             tmpBuffer.flip();
             channel.write(tmpBuffer);
@@ -160,10 +162,7 @@ public class MainThread implements Runnable {
                     if (input.getType().equals(Constants.C_TERMINATE)) {
                         convService.removeConvPage(input.getContent());
 
-                    } /*else if (input.getType().equals(Constants.C_REQUEST)) {
-                        convService.createConvPage(input.getContent());
-
-                    }*/
+                    }
                 }
                 TimeUnit.MILLISECONDS.sleep(200);
             }

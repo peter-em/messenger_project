@@ -27,9 +27,9 @@ class ClientDataConverterTest extends Specification {
         ClientData inData = new ClientData("login", "password", 1)
 
         when:
-        ByteBuffer buffer = ClientDataConverter.encodeToBuffer(inData)
+        ByteBuffer buffer = ClientDataConverter.encodeAuthToBuffer(inData)
         buffer.flip()
-        ClientData outData = ClientDataConverter.decodeFromBuffer(buffer)
+        ClientData outData = ClientDataConverter.decodeAuthFromBuffer(buffer)
 
         then:
         inData == outData

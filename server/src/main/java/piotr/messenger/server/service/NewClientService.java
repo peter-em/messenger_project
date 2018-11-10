@@ -23,7 +23,7 @@ public class NewClientService {
 
         ClientData clientData;
         try {
-            clientData = ClientDataConverter.decodeFromBuffer(readBuffer);
+            clientData = ClientDataConverter.decodeAuthFromBuffer(readBuffer);
         } catch (BufferUnderflowException | IndexOutOfBoundsException ex) {
             return -4;
         }

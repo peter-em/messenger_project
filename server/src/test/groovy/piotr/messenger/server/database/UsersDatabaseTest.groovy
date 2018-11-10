@@ -1,5 +1,6 @@
 package piotr.messenger.server.database
 
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder
 import piotr.messenger.library.util.ClientData
 import piotr.messenger.server.database.model.UserJPA
 import piotr.messenger.server.database.service.UserJPAService
@@ -12,17 +13,19 @@ import spock.lang.Unroll
 class UsersDatabaseTest extends Specification {
 
     UserJPAService service
+    BCryptPasswordEncoder passwordEncoder
     @Subject UsersDatabase database
-    def data = new ClientData(null,null,0)
+    def data = new ClientData("","",0)
 
     def setup() {
         service = Mock()
-        database = new UsersDatabase(service)
+        passwordEncoder = new BCryptPasswordEncoder()
+        database = new UsersDatabase(service, passwordEncoder)
     }
 
     @Unroll
     def "Verification #Nr: should return #value for provided ClientData"() {
-        given:"stubbed getUser method and ClientData object"
+        given:"mocked getUser method and ClientData object"
         data.setPassword(password)
         service.getUser(_) >> user
 
@@ -37,7 +40,7 @@ class UsersDatabaseTest extends Specification {
 
     @Unroll
     def "Should #not call registerUser when provided credentials are #not available"() {
-        given:"stubbed hasUser method"
+        given:"mocked hasUser method"
         service.hasUser(_) >> flag
 
         when:"registerClient method is called"
@@ -52,9 +55,29 @@ class UsersDatabaseTest extends Specification {
         "not"| true  || 0
     }
 
+    @Unroll
+    def "Should change user status when active equals 1"() {
+        given:"mocked getUser method"
+        UserJPA user = goodUser()
+        user.setActive(status)
+        service.getUser(_ as String) >> user
+
+        when:"setUserOffline method is called"
+        database.setUserOffline("")
+
+        then:"should update user status when it was 1"
+        n * service.updateUserStatus(user)
+
+        where:
+        status  | n
+        0       | 0
+        1       | 1
+    }
+
     def goodUser() {
         UserJPA user = new UserJPA()
-        user.setPassword("passwd11")
+        BCryptPasswordEncoder encoder = new BCryptPasswordEncoder()
+        user.setPassword(encoder.encode("passwd11"))
         user
     }
 }

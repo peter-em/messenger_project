@@ -17,11 +17,12 @@ public class ClientDataConverter {
         return new String(array, 0, size, Constants.CHARSET);
     }
 
-    public static ClientData decodeFromBuffer(ByteBuffer buffer) {
-        byte[] array = new byte[Constants.RECORD_LENGTH];
+    public static ClientData decodeAuthFromBuffer(ByteBuffer buffer) {
         int bytesToRead = buffer.getInt();
+        byte[] array = new byte[bytesToRead];
         String login = getStringFromArray(buffer, array, bytesToRead);
         bytesToRead = buffer.getInt();
+        array = new byte[bytesToRead];
         String passwd = getStringFromArray(buffer, array, bytesToRead);
         bytesToRead = buffer.getInt();
         if (bytesToRead == Constants.LOGIN_MODE
@@ -32,12 +33,14 @@ public class ClientDataConverter {
         }
     }
 
-    public static ByteBuffer encodeToBuffer(ClientData clientData) {
+    public static ByteBuffer encodeAuthToBuffer(ClientData clientData) {
         ByteBuffer buffer = ByteBuffer.allocate(Constants.BUFFER_SIZE);
-        buffer.putInt(clientData.getLogin().length());
-        buffer.put(clientData.getLogin().getBytes(Constants.CHARSET));
-        buffer.putInt(clientData.getPassword().length());
-        buffer.put(clientData.getPassword().getBytes(Constants.CHARSET));
+        byte[] data = clientData.getLogin().getBytes(Constants.CHARSET);
+        buffer.putInt(data.length);
+        buffer.put(data);
+        data = clientData.getPassword().getBytes(Constants.CHARSET);
+        buffer.putInt(data.length);
+        buffer.put(data);
         buffer.putInt(clientData.getConnectMode());
         return buffer;
     }

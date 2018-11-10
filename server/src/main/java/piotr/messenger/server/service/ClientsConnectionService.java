@@ -2,6 +2,7 @@ package piotr.messenger.server.service;
 
 import org.springframework.stereotype.Component;
 import piotr.messenger.library.Constants;
+import piotr.messenger.server.database.UsersDatabase;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -11,9 +12,13 @@ import java.util.*;
 @Component
 public class ClientsConnectionService {
 
-    final Map<String, SocketChannel> connectedClients = new HashMap<>();
-    final Map<SocketChannel, List<ByteBuffer>> writingBuffers = new HashMap<>();
+    private final Map<String, SocketChannel> connectedClients = new HashMap<>();
+    private final Map<SocketChannel, List<ByteBuffer>> writingBuffers = new HashMap<>();
+    private final UsersDatabase database;
 
+    public ClientsConnectionService(UsersDatabase database) {
+        this.database = database;
+    }
 
     public boolean isAuthenticated(String login) {
         return null != connectedClients.get(login);
@@ -42,9 +47,19 @@ public class ClientsConnectionService {
     public boolean removeClient(SocketChannel channel) throws IOException {
 
         writingBuffers.remove(channel);
-        boolean removed = connectedClients.values().remove(channel);
         channel.close();
-        return removed;
+        Optional<Map.Entry<String, SocketChannel>> optional = connectedClients
+                .entrySet()
+                .stream()
+                .filter(e -> channel.equals(e.getValue()))
+                .findFirst();
+
+        if (optional.isPresent()) {
+            database.setUserOffline(optional.get().getKey());
+            connectedClients.remove(optional.get().getKey());
+            return true;
+        }
+        return false;
     }
 
     public ByteBuffer prepareUserList() {
@@ -52,8 +67,9 @@ public class ClientsConnectionService {
 
         buffer.putInt(connectedClients.size());
         connectedClients.keySet().forEach(user -> {
-            buffer.putInt(user.length());
-            buffer.put(user.getBytes(Constants.CHARSET));
+            byte[] data = user.getBytes(Constants.CHARSET);
+            buffer.putInt(data.length);
+            buffer.put(data);
         });
         return buffer;
     }

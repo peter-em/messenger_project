@@ -131,8 +131,9 @@ public class ConversationsService {
         ByteBuffer sendBuffer = ByteBuffer.allocate(Constants.BUFFER_SIZE);
         sendBuffer.putInt(messageMode);     // insert message type
         sendBuffer.putInt(messages.size()); // insert number of messages in buffer
-        sendBuffer.putInt(logins.get(1).length());                  // insert size and login of conv partner
-        sendBuffer.put(logins.get(1).getBytes(Constants.CHARSET));  // (for archived messages request)
+        byte[] data = logins.get(1).getBytes(Constants.CHARSET);
+        sendBuffer.putInt(data.length);                  // insert size and login of conv partner
+        sendBuffer.put(data);  // (for archived messages request)
         for (Message message : messages) {
             writeMessageToBuffer(message, sendBuffer);
         }

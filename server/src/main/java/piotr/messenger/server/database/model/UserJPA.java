@@ -23,7 +23,7 @@ public class UserJPA implements Serializable {
     @Column(length = Constants.RECORD_LENGTH, nullable = false, unique = true)
     private String login;
 
-    @Column(length = Constants.RECORD_LENGTH, nullable = false)
+    @Column(nullable = false)
     private String password;
 
     @Column(nullable = false, updatable = false)
@@ -33,4 +33,6 @@ public class UserJPA implements Serializable {
     @Column(nullable = false)
     @LastModifiedDate
     private LocalDateTime lastloggedAt;
+
+    private int active;
 }

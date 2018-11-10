@@ -47,6 +47,7 @@ class UserJPAServiceTest extends Specification {
         "non" | "other"  || new UserJPA()
     }
 
+    @Unroll
     def "Should update lastloggedAt field"() {
         given:"UserJPA from database"
         def user = repository.findByLogin("login1").orElse(new UserJPA())
@@ -54,15 +55,16 @@ class UserJPAServiceTest extends Specification {
         expect:"registered and lastlogged dates should be the same"
         user.registeredAt.isEqual(user.lastloggedAt)
 
+        when:"updateUserStatus method is called with user active status set to be 0"
+        user.setActive(0)
+        service.updateUserStatus(user)
 
-        when:"updateLastLogged(UserJPA user) method is called"
-        service.updateLastLogged(user)
-
-        and:"user object is retrieved again from database"
+        and:"user object is again retrieved from database"
         user = repository.findByLogin("login1").orElse(new UserJPA())
 
-        then:"lastlogged is updated"
+        then:"lastlogged is updated and user.getActive is 0"
         user.lastloggedAt.isAfter(user.registeredAt)
+        user.active == 0
     }
 
     def "Should table size increase when registering new client"() {
@@ -93,6 +95,7 @@ class UserJPAServiceTest extends Specification {
         UserJPA user = new UserJPA()
         user.login = "login1"
         user.password = "password"
+        user.setActive(1)
         user
     }
 }

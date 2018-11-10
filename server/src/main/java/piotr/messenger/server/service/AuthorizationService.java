@@ -97,7 +97,8 @@ public class AuthorizationService {
             // with logins of active users
             ByteBuffer buffer = connectionService.prepareUserList();
             buffer.flip();
-            connectionService.getChannels().forEach(channel -> send(selector, channel, buffer.array()));
+            connectionService.getChannels().forEach(channel ->
+                    send(selector, channel, Arrays.copyOf(buffer.array(), buffer.limit())));
             updateClietsUserList = false;
         }
     }
